@@ -419,6 +419,13 @@ void Core::DebugCommandHandler::get( char * data, Core::Entity::PlayerPtr pPlaye
                            std::to_string( map_id ) + "\nZoneID: " +
                            std::to_string( pPlayer->getCurrentZone()->getId() ) + "\n" );
    }
+   else if ( ( subCommand == "targetinfo" ) )
+   {
+
+      auto target = pPlayer->getTargetId();
+
+      pPlayer->sendNotice( "targetID: " + std::to_string( target ) );
+   }
    else
    {
       pPlayer->sendUrgent( subCommand + " is not a valid GET command." );

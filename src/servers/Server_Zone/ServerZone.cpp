@@ -24,6 +24,7 @@
 
 #include "Script/ScriptManager.h"
 #include "Linkshell/LinkshellMgr.h"
+#include "Party/PartyMgr.h"
 
 #include "Forwards.h"
 #include <boost/foreach.hpp>

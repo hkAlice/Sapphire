@@ -118,6 +118,23 @@ void Core::Network::GameConnection::actionHandler( const Packets::GamePacket& in
                pPlayer->getCurrentAction()->setInterrupted();
            break;
         }
+        case 0xAF: // Cancel cast
+        {
+           if ( pPlayer->getTargetId() != INVALID_GAME_OBJECT_ID )
+           {
+              auto it = pPlayer->getInRangeActors().begin();
+              for ( ; it != pPlayer->getInRangeActors().end(); ++it )
+              {
+                 if ( it->get()->getId() == pPlayer->getTargetId() )
+                 {
+                    it->get()->getAsPlayer()->sendNotice( "ding ding you get party inv" );
+
+                    return;
+                 }
+              }
+           }
+           break;
+        }
         case 0x12E: // Set player title
         {
            pPlayer->setTitle( param1 );
