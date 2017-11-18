@@ -2,7 +2,7 @@
 #define _PLAYERMINIMAL_H
 
 #include <map>
-#include <stdint.h>
+#include <cstdint>
 #include <string.h>
 namespace Core {
 

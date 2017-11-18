@@ -1,7 +1,7 @@
 #ifndef _EVENTHELPER_H
 #define _EVENTHELPER_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 
 namespace Core {

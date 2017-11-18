@@ -1,7 +1,7 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <boost/format.hpp>
 
 namespace Core {

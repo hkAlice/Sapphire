@@ -1,6 +1,6 @@
 #ifndef SAPPHIRE_PREPAREDSTATEMENT_H
 #define SAPPHIRE_PREPAREDSTATEMENT_H
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <boost/shared_ptr.hpp>

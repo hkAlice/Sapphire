@@ -1,7 +1,7 @@
 #ifndef _COMMON_GEN_H_
 #define _COMMON_GEN_H_
 
-#include <stdint.h>
+#include <cstdint>
 
 /* This file has been automatically generated.
    Changes will be lost upon regeneration.

@@ -3,7 +3,7 @@
 
 #include "CommonNetwork.h"
 #include "src/servers/Server_Common/Forwards.h"
-#include <stdint.h>
+#include <cstdint>
 #include <string.h>
 
 namespace Core {

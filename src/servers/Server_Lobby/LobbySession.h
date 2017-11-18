@@ -3,7 +3,7 @@
 #ifndef _CLobbySession_H_
 #define _CLobbySession_H_
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <string.h>
 

@@ -1,7 +1,7 @@
 #ifndef SAPPHIRE_DBLOADER_H
 #define SAPPHIRE_DBLOADER_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <functional>
 #include <queue>
 #include <stack>

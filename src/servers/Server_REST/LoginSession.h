@@ -3,7 +3,7 @@
 #ifndef _CLoginSession_H_
 #define _CLoginSession_H_
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <string.h>
 

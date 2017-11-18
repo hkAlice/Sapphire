@@ -1,7 +1,7 @@
 #ifndef _PCB_H
 #define _PCB_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 
 struct PCB_HEADER

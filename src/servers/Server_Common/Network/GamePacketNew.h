@@ -1,7 +1,7 @@
 #ifndef _GAMEPACKETNEW_H
 #define _GAMEPACKETNEW_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <iostream>
 
 #include "GamePacket.h"

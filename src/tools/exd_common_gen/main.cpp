@@ -94,7 +94,7 @@ int main()
   
    std::string result = "#ifndef _COMMON_GEN_H_\n#define _COMMON_GEN_H_\n";
 
-   result += "\n#include <stdint.h>\n\n";
+   result += "\n#include <cstdint>\n\n";
 
    result +=
    "/* This file has been automatically generated.\n   Changes will be lost upon regeneration.\n   To change the content edit tools/exd_common_gen */\n";

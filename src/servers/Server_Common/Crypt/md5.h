@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <cstdint>
 
 #ifndef _MD52_H
 #define _MD52_H

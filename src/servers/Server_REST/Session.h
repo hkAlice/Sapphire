@@ -1,7 +1,7 @@
 #ifndef _SESSION_H_
 #define _SESSION_H_
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <string.h>
 

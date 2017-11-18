@@ -1,7 +1,7 @@
 #ifndef __XMLCONFIG_H
 #define __XMLCONFIG_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <boost/property_tree/ptree.hpp>
 

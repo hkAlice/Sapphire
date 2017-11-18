@@ -1,6 +1,6 @@
 #include "CommonGen.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace Core {
 namespace Common {

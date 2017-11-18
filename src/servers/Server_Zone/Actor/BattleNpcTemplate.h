@@ -1,7 +1,7 @@
 #ifndef _BATTLENPCTEMPLATE_H
 #define _BATTLENPCTEMPLATE_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 
 namespace Core {

@@ -2,7 +2,7 @@
 #ifndef _CELL_H
 #define _CELL_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "src/servers/Server_Zone/Forwards.h"
 #include <set>
