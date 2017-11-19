@@ -17,17 +17,17 @@ set_target_properties(server_rest PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
     RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
     RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
 )
 
-if(MSVC)
-    message(STATUS "Enabling Edit and Continue..")
-    set_property(TARGET server_rest APPEND_STRING PROPERTY COMPILE_FLAGS " /INCREMENTAL /ZI")
-endif()
-
 if (UNIX)
-  target_link_libraries (server_rest Common xivdat pthread mysqlclient dl z)
+  target_link_libraries (server_rest Common xivdat pthread mysqlclient mysqlConnector dl z)
 else()
-  target_link_libraries (server_rest Common xivdat libmysql zlib1)
+  # ignore unchecked iterators warnings from msvc
+  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+
+  target_link_libraries (server_rest Common xivdat libmysql mysqlConnector zlib1)
+
 endif()
 
 target_link_libraries( server_rest ${Boost_LIBRARIES} ${Boost_LIBRARIES} )

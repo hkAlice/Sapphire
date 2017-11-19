@@ -1,6 +1,5 @@
 #include <src/servers/Server_Common/Common.h>
 #include <src/servers/Server_Common/Network/CommonNetwork.h>
-#include <src/servers/Server_Common/Database/Database.h>
 #include <src/servers/Server_Common/Util/Util.h>
 #include <src/servers/Server_Common/Logging/Logger.h>
 #include <src/servers/Server_Common/Network/PacketContainer.h>
@@ -207,7 +206,7 @@ void Core::Network::GameConnection::handleZonePacket( const Packets::GamePacket&
       g_log.debug( sessionStr + " Undefined Zone IPC : Unknown ( " +
                    boost::str( boost::format( "%|04X|" ) %
                                       static_cast< uint32_t >( pPacket.getSubType() & 0xFFFF ) ) + " )" );
-      g_log.debug( pPacket.toString() );
+      g_log.debug( "\n" + pPacket.toString() );
    }
 }
 
@@ -330,7 +329,11 @@ void Core::Network::GameConnection::injectPacket( const std::string& packetpath,
    fseek( fp, 0, SEEK_END );
    int32_t size = ftell( fp );
    rewind( fp );
-   fread( packet, sizeof( char ), size, fp );
+   if ( fread( packet, sizeof( char ), size, fp ) != size )
+   {
+      g_log.error( "Packet " + packetpath + " did not read full size: " + std::to_string( size ) );
+      return;
+   }
    fclose( fp );
 
    // cycle through the packet entries and queue each one
@@ -389,8 +392,7 @@ void Core::Network::GameConnection::handlePackets( const Core::Network::Packets:
             }
             session = g_serverZone.getSession( playerId );
          }
-
-         if( !session->isValid() ) //TODO: Catch more things in lobby and send real errors
+         else if( !session->isValid() || ( session->getPlayer() && session->getPlayer()->getLastPing() != 0 ) ) //TODO: Catch more things in lobby and send real errors
          {
             g_log.error( "[" + std::string(id) + "] Session INVALID, disconnecting" );
             Disconnect();
@@ -406,8 +408,6 @@ void Core::Network::GameConnection::handlePackets( const Core::Network::Packets:
          pPe.setValAt< uint32_t >( 0x10, 0xE0037603 );
          pPe.setValAt< uint32_t >( 0x14, static_cast< uint32_t >( time( nullptr ) ) );
          sendSinglePacket( &pPe );
-
-
 
          // main connection, assinging it to the session
          if( ipcHeader.connectionType == ConnectionType::Zone )

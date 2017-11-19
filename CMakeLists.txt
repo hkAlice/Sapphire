@@ -44,6 +44,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/servers/Server_Common/Version.cp
 # Common include folders
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src/libraries/external/ChaiScript-6.0.0/include/")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src/libraries/sapphire/datReader/")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src/libraries/sapphire/mysqlConnector/")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 include_directories("${PROJECT_INCLUDE_DIR}")
@@ -56,6 +57,12 @@ link_directories(${SERVER_COMMON_DIR})
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/libraries/sapphire/datReader)
 
 add_subdirectory("src/servers")
+
 add_subdirectory("src/libraries/sapphire/datReader")
+add_subdirectory("src/libraries/sapphire/mysqlConnector")
+
 add_subdirectory("src/tools/exd_common_gen")
+add_subdirectory("src/tools/exd_struct_gen")
+add_subdirectory("src/tools/exd_struct_test")
 add_subdirectory("src/tools/quest_parser")
+add_subdirectory("src/tools/pcb_reader")

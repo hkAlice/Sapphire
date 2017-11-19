@@ -113,7 +113,7 @@ public:
    /*! set quest tracker flag for a specified slot */
    void setQuestTracker( uint16_t index, int16_t flag );
    /*! return the index of a given quest in the players quest list */
-   int16_t getQuestIndex( uint16_t questId );
+   int8_t getQuestIndex( uint16_t questId );
    /*! finish a given quest */
    void finishQuest( uint16_t questId );
    /*! finish a given quest */
@@ -197,9 +197,9 @@ public:
    // Inventory / Item / Currency
    //////////////////////////////////////////////////////////////////////////////////////////////////////
    /*! add an item to the first free slot in one of the 4 main containers */
-   bool tryAddItem( uint16_t catalogId, uint16_t quantity );
+   bool tryAddItem( uint16_t catalogId, uint32_t quantity );
    /*! add an item to a given container */
-   bool addItem( uint16_t containerId, uint16_t catalogId, uint16_t quantity );
+   bool addItem( uint16_t containerId, uint16_t catalogId, uint32_t quantity );
    /*! equip an item to a specified slot */
    void equipItem( Inventory::EquipSlot equipSlotId, ItemPtr pItem, bool sendModel );
    /*! remove an item from an equipment slot */
@@ -338,8 +338,14 @@ public:
    void setTitle( uint16_t titleId );
    /*! change gear param state */
    void setEquipDisplayFlags( uint8_t state );
-   /*! get gear param state and send update to inRangeSet */
+   /*! get gear param state */
    uint8_t getEquipDisplayFlags() const;
+   /*! mount the specified mount and send the packets */
+   void mount( uint32_t id );
+   /*! dismount the current mount and send the packets */
+   void dismount();
+   /*! get the current mount */
+   uint8_t getCurrentMount() const;
 
    void calculateStats() override;
    void sendStats();
@@ -425,9 +431,7 @@ public:
    // Player Database Handling
    //////////////////////////////////////////////////////////////////////////////////////////////////////
    /*! generate the update sql based on update flags */
-   void createUpdateSql();
-   /*! set an update flag */
-   void setSyncFlag( uint32_t updateFlag );
+   void updateSql();
    /*! load player from db, by id */
    bool load( uint32_t charId, SessionPtr pSession );
    /*! load active class data */
@@ -517,7 +521,17 @@ public:
    void setCFPenaltyMinutes( uint32_t minutes );
 
    void setEorzeaTimeOffset( uint64_t timestamp );
-   
+
+
+   // Database
+   void updateDbAllQuests() const;
+   void deleteQuest( uint16_t questId ) const;
+   void insertQuest( uint16_t questId, uint8_t index, uint8_t seq ) const;
+   void updateDbSearchInfo() const;
+   void updateDbClass() const;
+
+   void setMarkedForRemoval();
+   bool isMarkedForRemoval() const;
 
 private:
    uint32_t m_lastWrite;
@@ -525,15 +539,14 @@ private:
 
    bool m_bIsLogin;
 
-   // ==== CHARABASE
    uint64_t m_contentId; // This id will be the name of the folder for character settings in "My Games"
 
    uint8_t m_mode;
 
+   bool m_markedForRemoval;
+
 private:
-   uint8_t m_mount;
-   uint8_t m_ignore;
-   uint8_t m_invincibleGM;
+
    uint8_t m_voice;
 
    uint64_t m_modelMainWeapon;
@@ -542,31 +555,8 @@ private:
 
    uint32_t m_modelEquip[10];
 
-   uint8_t m_emoteModeType;
-
-   // timestamp of first login
-   uint32_t m_firstLogin;
-
-   // id of initial language
-   uint32_t m_language;
-
    bool m_bNewGame;
 
-   uint32_t m_primaryTerritoryType;
-   uint32_t m_primaryTerritoryId;
-   uint32_t m_primaryLayoutId;
-   uint32_t m_primaryExclusiveId;
-   uint32_t m_primaryMoveType;
-   uint32_t m_primaryContentId;
-
-   uint32_t m_secondaryTerritoryType;
-   uint32_t m_secondaryTerritoryId;
-   Common::FFXIVARR_POSITION3 m_secondaryPos;
-   float m_secondaryRot;
-   uint32_t m_secondaryLayoutId;
-   // !! END CHARABASE
-
-   // ==== CHARADETAIL
    uint8_t m_guardianDeity;
    uint8_t m_birthDay;
    uint8_t m_birthMonth;
@@ -581,16 +571,15 @@ private:
       uint8_t status;
    } m_retainerInfo[8];
 
-   uint16_t m_title;
+   uint16_t m_activeTitle;
    uint8_t m_titleList[48];
-   uint8_t m_achievement[16];
    uint8_t m_howTo[33];
+   uint8_t m_minions[33];
+   uint8_t m_mounts[13];
    uint8_t m_homePoint;
    uint8_t m_startTown;
-   uint8_t m_favoritePoint[3];
    uint16_t m_townWarpFstFlags;
    uint8_t m_questCompleteFlags[200];
-   uint8_t m_chocoboTaxiStandFlags[8];
    uint8_t m_discovery[420];
    uint32_t m_playTime;
 
@@ -608,9 +597,8 @@ private:
    std::queue< uint8_t > m_freeSpawnIdQueue; // queue with spawn ids free to be assigned
    std::queue< uint8_t > m_freeHateSlotQueue; // queue with "hate slots" free to be assigned
    std::map< uint32_t, uint8_t > m_actorIdTohateSlotMap;
-   std::map< uint32_t, uint16_t > m_questIdToQuestIdx; // quest mapping, quest id to quest container index
-   std::map< uint16_t, uint32_t > m_questIdxToQuestId; // quest mapping, quest container index to questId
-   std::queue< uint8_t > m_freeQuestIdxQueue; // queue with quest indices free to be assigned
+   std::map< uint32_t, uint8_t > m_questIdToQuestIdx; // quest mapping, quest id to quest container index
+   std::map< uint8_t, uint32_t > m_questIdxToQuestId; // quest mapping, quest container index to questId
    boost::shared_ptr< Common::QuestActive > m_activeQuests[30];
    int16_t m_questTracking[5];
    uint8_t m_stateFlags[7];
@@ -626,7 +614,6 @@ private:
    Common::ZoneingType m_zoningType;
 
    bool m_bMarkedForZoning;
-   uint32_t m_updateFlags;
    bool m_bNewAdventurer;
    uint64_t m_onlineStatus;
    boost::shared_ptr< QueuedZoning > m_queuedZoneing;

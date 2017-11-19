@@ -1,6 +1,5 @@
 #include <src/servers/Server_Common/Common.h>
 #include <src/servers/Server_Common/Network/CommonNetwork.h>
-#include <src/servers/Server_Common/Database/Database.h>
 #include <src/servers/Server_Common/Network/GamePacketNew.h>
 #include <src/servers/Server_Common/Logging/Logger.h>
 #include <src/servers/Server_Common/Exd/ExdData.h>
@@ -37,7 +36,6 @@
 #include "src/servers/Server_Zone/Action/ActionTeleport.h"
 
 extern Core::Logger g_log;
-extern Core::Db::Database g_database;
 extern Core::ServerZone g_serverZone;
 extern Core::ZoneMgr g_zoneMgr;
 extern Core::Data::ExdData g_exdData;
@@ -282,13 +280,16 @@ void Core::Network::GameConnection::gm1Handler( const Packets::GamePacket& inPac
    }
    case GmCommand::Teri:
    {
-      if( param1 < 128 )
-         pPlayer->sendUrgent( "Zone ID out of range." );
+      auto zoneInfo = g_zoneMgr.getZone( param1 );
+      if ( !zoneInfo )
+      {
+         pPlayer->sendUrgent( "Invalid zone " + std::to_string( param1 ) );
+      }
       else
       {
          targetPlayer->setPosition( targetPlayer->getPos() );
          targetPlayer->performZoning( param1, targetPlayer->getPos(), 0 );
-         pPlayer->sendNotice( targetPlayer->getName() + " was warped to Zone " + std::to_string( param1 ) );
+         pPlayer->sendNotice( targetPlayer->getName() + " was warped to zone " + std::to_string( param1 ) + " (" + zoneInfo->getName( ) + ")" );
       }
       break;
    }
@@ -332,7 +333,7 @@ void Core::Network::GameConnection::gm1Handler( const Packets::GamePacket& inPac
       GamePacketNew< FFXIVIpcSetSearchInfo, ServerZoneIpcType > searchInfoPacket( targetPlayer->getId() );
       searchInfoPacket.data().onlineStatusFlags = param1;
       searchInfoPacket.data().selectRegion = targetPlayer->getSearchSelectRegion();
-      sprintf( searchInfoPacket.data().searchMessage, targetPlayer->getSearchMessage() );
+      strcpy( searchInfoPacket.data().searchMessage, targetPlayer->getSearchMessage() );
       targetPlayer->queuePacket( searchInfoPacket );
 
       targetPlayer->sendToInRangeSet( ActorControlPacket142( pPlayer->getId(), SetStatusIcon,
@@ -419,9 +420,6 @@ void Core::Network::GameConnection::gm1Handler( const Packets::GamePacket& inPac
       break;
    }
 
-   pPlayer->setSyncFlag( Common::PlayerSyncFlags::All );
-   targetPlayer->setSyncFlag( Common::PlayerSyncFlags::All );
-
 }
 
 void Core::Network::GameConnection::gm2Handler( const Packets::GamePacket& inPacket, Entity::PlayerPtr pPlayer )
@@ -465,7 +463,6 @@ void Core::Network::GameConnection::gm2Handler( const Packets::GamePacket& inPac
       targetPlayer->resetHp();
       targetPlayer->resetMp();
       targetPlayer->setStatus( Entity::Actor::ActorStatus::Idle );
-      targetPlayer->setSyncFlag( Status );
 
       targetPlayer->sendToInRangeSet( ActorControlPacket143( pPlayer->getId(), ZoneIn, 0x01, 0x01, 0, 113 ), true );
       targetPlayer->sendToInRangeSet( ActorControlPacket142( pPlayer->getId(), SetStatus,
@@ -500,7 +497,7 @@ void Core::Network::GameConnection::gm2Handler( const Packets::GamePacket& inPac
          "\nGil: " + std::to_string( targetPlayer->getCurrency( 1 ) ) +
          "\nZone: " + targetPlayer->getCurrentZone()->getName() +
          "(" + std::to_string( targetPlayer->getZoneId() ) + ")" +
-         "\nClass: " + std::to_string( targetPlayer->getClass() ) +
+         "\nClass: " + std::to_string( static_cast< uint8_t >( targetPlayer->getClass() ) ) +
          "\nLevel: " + std::to_string( targetPlayer->getLevel() ) +
          "\nExp: " + std::to_string( targetPlayer->getExp() ) +
          "\nSearchMessage: " + targetPlayer->getSearchMessage() +
@@ -512,8 +509,5 @@ void Core::Network::GameConnection::gm2Handler( const Packets::GamePacket& inPac
       pPlayer->sendUrgent( "GM2 Command not implemented: " + std::to_string( commandId ) );
       break;
    }
-
-   pPlayer->setSyncFlag( Common::PlayerSyncFlags::All );
-   targetPlayer->setSyncFlag( Common::PlayerSyncFlags::All );
 
 }

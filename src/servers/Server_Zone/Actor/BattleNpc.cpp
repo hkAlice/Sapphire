@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <cmath>
 
-#include <src/servers/Server_Common/Database/Database.h>
 #include <src/servers/Server_Common/Logging/Logger.h>
 #include <src/servers/Server_Common/Exd/ExdData.h>
 #include <src/servers/Server_Common/Util/Util.h>
@@ -23,7 +22,6 @@ using namespace Core::Network::Packets;
 using namespace Core::Network::Packets::Server;
 
 extern Core::Logger g_log;
-extern Core::Db::Database g_database;
 extern Core::Data::ExdData g_exdData;
 
 uint32_t Core::Entity::BattleNpc::m_nextID = 1149241694;
@@ -67,7 +65,7 @@ Core::Entity::BattleNpc::BattleNpc( uint32_t modelId, uint32_t nameid, const Com
 
    m_currentStance = Stance::Passive;
 
-   m_class = ClassJob::CLASS_GLADIATOR;
+   m_class = ClassJob::Gladiator;
    m_level = level > 0 ? level : 60;
 
    m_modelId = modelId;
@@ -451,7 +449,7 @@ void Core::Entity::BattleNpc::onDeath()
             
 
             // todo: this is actually retarded, we need real rand()
-            srand( time( NULL ) );
+            srand( static_cast< unsigned int> ( time( NULL ) ) );
 
             auto pPlayer = pHateEntry->m_pActor->getAsPlayer();
             pPlayer->gainExp( exp );

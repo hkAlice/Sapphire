@@ -2,7 +2,6 @@
 
 #include <src/servers/Server_Common/Common.h>
 #include <src/servers/Server_Common/Version.h>
-#include <src/servers/Server_Common/Database/Database.h>
 #include <src/servers/Server_Common/Network/GamePacketNew.h>
 #include <src/servers/Server_Common/Network/CommonNetwork.h>
 #include <src/servers/Server_Common/Util/UtilMath.h>
@@ -31,7 +30,10 @@
 #include "src/servers/Server_Zone/Session.h"
 #include <boost/make_shared.hpp>
 
-extern Core::Db::Database g_database;
+#include <Server_Common/Database/DatabaseDef.h>
+
+#include <cinttypes>
+
 extern Core::Scripting::ScriptManager g_scriptMgr;
 extern Core::Data::ExdData g_exdData;
 extern Core::Logger g_log;
@@ -44,12 +46,13 @@ Core::DebugCommandHandler::DebugCommandHandler()
    registerCommand( "set", &DebugCommandHandler::set, "Loads and injects a premade Packet.", 1 );
    registerCommand( "get", &DebugCommandHandler::get, "Loads and injects a premade Packet.", 1 );
    registerCommand( "add", &DebugCommandHandler::add, "Loads and injects a premade Packet.", 1 );
-   registerCommand( "inject", &DebugCommandHandler::injectPacket, "Loads and injects a premade Packet.", 1 );
-   registerCommand( "injectc", &DebugCommandHandler::injectChatPacket, "Loads and injects a premade Packet.", 1 );
-   registerCommand( "script_reload", &DebugCommandHandler::scriptReload, "Loads and injects a premade Packet.", 1 );
+   registerCommand( "inject", &DebugCommandHandler::injectPacket, "Loads and injects a premade packet.", 1 );
+   registerCommand( "injectc", &DebugCommandHandler::injectChatPacket, "Loads and injects a premade chat packet.", 1 );
+   registerCommand( "script_reload", &DebugCommandHandler::scriptReload, "Reload all server scripts", 1 );
    registerCommand( "nudge", &DebugCommandHandler::nudge, "Nudges you forward/up/down", 1 );
    registerCommand( "info", &DebugCommandHandler::serverInfo, "Send server info", 0 );
-
+   registerCommand( "unlock", &DebugCommandHandler::unlockCharacter, "Unlock character", 1 );
+   registerCommand( "help", &DebugCommandHandler::help, "Shows registered commands", 0 );
 }
 
 // clear all loaded commands
@@ -119,6 +122,18 @@ void Core::DebugCommandHandler::scriptReload( char * data, Core::Entity::PlayerP
 {
    g_scriptMgr.reload();
    pPlayer->sendDebug( "Scripts reloaded." );
+}
+
+void Core::DebugCommandHandler::help( char* data, Entity::PlayerPtr pPlayer, boost::shared_ptr< Core::DebugCommand > command )
+{
+   pPlayer->sendDebug( "Registered debug commands:" );
+   for ( auto cmd : m_commandMap )
+   {
+      if ( pPlayer->getGmRank( ) >= cmd.second->m_gmLevel )
+      {
+         pPlayer->sendDebug( " - " + cmd.first + " - " + cmd.second->getHelpText( ) );
+      }
+   }
 }
 
 void Core::DebugCommandHandler::set( char * data, Core::Entity::PlayerPtr pPlayer, boost::shared_ptr<Core::DebugCommand> command )
@@ -209,8 +224,8 @@ void Core::DebugCommandHandler::set( char * data, Core::Entity::PlayerPtr pPlaye
          "', '" + std::to_string( map_id ) +
          "', '" + std::to_string( discover_id ) + "')";
 
-      g_database.execute( query1 );
-      g_database.execute( query2 );
+      g_charaDb.execute( query1 );
+      g_charaDb.execute( query2 );
 
    }
 
@@ -243,7 +258,7 @@ void Core::DebugCommandHandler::set( char * data, Core::Entity::PlayerPtr pPlaye
    else if ( subCommand == "eorzeatime" )
    {
       uint64_t timestamp;
-      sscanf( params.c_str(), "%llu", &timestamp );
+      sscanf( params.c_str(), "%" SCNu64, &timestamp );
 
       pPlayer->setEorzeaTimeOffset( timestamp );
       pPlayer->sendNotice( "Eorzea time offset: " + std::to_string( timestamp ) );
@@ -257,6 +272,14 @@ void Core::DebugCommandHandler::set( char * data, Core::Entity::PlayerPtr pPlaye
       pPlayer->setModelForSlot( static_cast<Inventory::EquipSlot>( slot ), val );
       pPlayer->sendModel();
       pPlayer->sendDebug( "Model updated" );
+   }
+   else if ( subCommand == "mount" )
+   {
+      int32_t id;
+      sscanf( params.c_str(), "%d", &id );
+
+      pPlayer->dismount();
+      pPlayer->mount( id );
    }
    else
    {
@@ -500,4 +523,9 @@ void Core::DebugCommandHandler::serverInfo( char * data, Core::Entity::PlayerPtr
    pPlayer->sendDebug( "SapphireServer " + Version::VERSION + "\nRev: " + Version::GIT_HASH );
    pPlayer->sendDebug( "Compiled: " __DATE__ " " __TIME__ );
    pPlayer->sendDebug( "Sessions: " + std::to_string( g_serverZone.getSessionCount() ) );
+}
+
+void Core::DebugCommandHandler::unlockCharacter( char* data, Entity::PlayerPtr pPlayer, boost::shared_ptr< Core::DebugCommand > command )
+{
+   pPlayer->unlock( );
 }

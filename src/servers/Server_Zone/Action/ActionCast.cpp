@@ -53,7 +53,7 @@ void Core::Action::ActionCast::onStart()
    GamePacketNew< FFXIVIpcActorCast, ServerZoneIpcType > castPacket( m_pSource->getId() );
 
    castPacket.data().action_id = m_id;
-   castPacket.data().unknown = 1;
+   castPacket.data().skillType = Common::SkillType::Normal;
    castPacket.data().unknown_1 = m_id;
    castPacket.data().cast_time = static_cast< float >( m_castTime / 1000 ); // This is used for the cast bar above the target bar of the caster.
    castPacket.data().target_id = m_pTarget->getId();

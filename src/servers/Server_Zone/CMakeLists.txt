@@ -4,7 +4,21 @@ cmake_policy(SET CMP0014 OLD)
 
 project(Sapphire_Zone)
 
-file(GLOB SERVER_PUBLIC_INCLUDE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/* ${CMAKE_CURRENT_SOURCE_DIR}/Script/*)
+file(GLOB SERVER_PUBLIC_INCLUDE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        /*.h
+        Actor/*.h
+        Action/*.h
+        DebugCommand/*.h
+        Event/*.h
+        Inventory/*.h
+        Linkshell/*.h
+        Network/*.h
+        Network/Handlers/*.h
+        Network/PacketWrappers/*.h
+        Script/*.h
+        StatusEffect/*.h
+        Zone/*.h)
+
 file(GLOB SERVER_SOURCE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         *.c*
         Actor/*.c*
@@ -24,7 +38,7 @@ file(GLOB SERVER_SOURCE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/")
 
 add_executable(server_zone ${SERVER_PUBLIC_INCLUDE_FILES} ${SERVER_SOURCE_FILES} )
-add_dependencies(server_zone Common xivdat)
+add_dependencies(server_zone Common xivdat mysqlConnector )
 
 set_target_properties(server_zone PROPERTIES
     CXX_STANDARD 14
@@ -34,17 +48,13 @@ set_target_properties(server_zone PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
     RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
     RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
 )
 
-if(MSVC)
-    message(STATUS "Enabling Edit and Continue..")
-    set_property(TARGET server_zone APPEND_STRING PROPERTY COMPILE_FLAGS " /INCREMENTAL /ZI")
-endif()
-
 if (UNIX)
-  target_link_libraries ( server_zone Common xivdat pthread mysqlclient dl z )
+  target_link_libraries ( server_zone Common xivdat pthread mysqlclient mysqlConnector dl z )
 else()
-  target_link_libraries ( server_zone Common xivdat libmysql zlib1 )
+  target_link_libraries ( server_zone Common xivdat libmysql zlib1 mysqlConnector )
 endif()
 
-target_link_libraries(server_zone ${Boost_LIBRARIES} ${Boost_LIBRARIES} )
+target_link_libraries(server_zone ${Boost_LIBRARIES} )

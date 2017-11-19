@@ -1,5 +1,4 @@
 #include <src/servers/Server_Common/Common.h>
-#include <src/servers/Server_Common/Database/Database.h>
 #include <src/servers/Server_Common/Util/Util.h>
 #include <src/servers/Server_Common/Util/UtilMath.h>
 #include <src/servers/Server_Common/Config/XMLConfig.h>
@@ -12,12 +11,10 @@
 #include "Player.h"
 #include "BattleNpc.h"
 
-
 #include "src/servers/Server_Zone/Zone/ZoneMgr.h"
 #include "src/servers/Server_Zone/Zone/Zone.h"
 
 #include "src/servers/Server_Zone/ServerZone.h"
-
 
 #include "src/servers/Server_Zone/Network/GameConnection.h"
 
@@ -48,7 +45,6 @@
 #include <boost/make_shared.hpp>
 
 extern Core::Logger g_log;
-extern Core::Db::Database g_database;
 extern Core::ServerZone g_serverZone;
 extern Core::ZoneMgr g_zoneMgr;
 extern Core::Data::ExdData g_exdData;
@@ -74,7 +70,8 @@ Core::Entity::Player::Player() :
    m_bLoadingComplete( false ),
    m_bMarkedForZoning( false ),
    m_zoningType( Common::ZoneingType::None ),
-   m_bAutoattack( false )
+   m_bAutoattack( false ),
+   m_markedForRemoval( false )
 {
    m_id = 0;
    m_type = ActorType::Player;
@@ -88,11 +85,13 @@ Core::Entity::Player::Player() :
    memset( m_name, 0, sizeof( m_name ) );
    memset( m_stateFlags, 0, sizeof( m_stateFlags ) );
    memset( m_searchMessage, 0, sizeof( m_searchMessage ) );
+   memset( m_classArray, 0, sizeof( m_classArray ) );
+   memset( m_expArray, 0, sizeof( m_expArray ) );
 }
 
 Core::Entity::Player::~Player()
 {
-
+   g_log.debug( "PlayerObj destroyed" );
 }
 
 // TODO: add a proper calculation based on race / job / level / gear
@@ -136,15 +135,25 @@ uint8_t Core::Entity::Player::getStartTown() const
    return m_startTown;
 }
 
+void Core::Entity::Player::setMarkedForRemoval()
+{
+   m_markedForRemoval = true;
+}
+
+bool Core::Entity::Player::isMarkedForRemoval() const
+{
+   return m_markedForRemoval;
+}
+
 Core::Common::OnlineStatus Core::Entity::Player::getOnlineStatus()
 {
    uint64_t newMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::NewAdventurer );
-   uint64_t afkMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::Afk );
+   uint64_t afkMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::AwayfromKeyboard );
    uint64_t busyMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::Busy );
    uint64_t dcMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::Disconnected );
-   uint64_t meldMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::LfMeld );
-   uint64_t ptMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::LfParty );
-   uint64_t rpMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::RolePlaying );
+   uint64_t meldMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::LookingtoMeldMateria );
+   uint64_t ptMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::LookingforParty );
+   uint64_t rpMask = uint64_t( 1 ) << static_cast< uint32_t >( OnlineStatus::Roleplaying );
 
    OnlineStatus status = OnlineStatus::Online;
 
@@ -153,7 +162,7 @@ Core::Common::OnlineStatus Core::Entity::Player::getOnlineStatus()
       status = OnlineStatus::NewAdventurer;
 
    if( m_onlineStatus & afkMask )
-      status = OnlineStatus::Afk;
+      status = OnlineStatus::AwayfromKeyboard;
 
    if( m_onlineStatus & busyMask )
       status = OnlineStatus::Busy;
@@ -162,16 +171,16 @@ Core::Common::OnlineStatus Core::Entity::Player::getOnlineStatus()
       status = OnlineStatus::Disconnected;
 
    if( m_onlineStatus & meldMask )
-      status = OnlineStatus::LfMeld;
+      status = OnlineStatus::LookingtoMeldMateria;
 
    if( m_onlineStatus & ptMask )
-      status = OnlineStatus::LfParty;
+      status = OnlineStatus::LookingforParty;
 
    if( m_onlineStatus & rpMask )
-      status = OnlineStatus::RolePlaying;
+      status = OnlineStatus::Roleplaying;
 
    if( hasStateFlag( PlayerStateFlag::WatchingCutscene ) || hasStateFlag( PlayerStateFlag::WatchingCutscene1 ) )
-      status = OnlineStatus::Cutscene;
+      status = OnlineStatus::ViewingCutscene;
 
    // TODO: add all the logic for returning the proper online status, there probably is a better way for this alltogether
    return status;
@@ -201,7 +210,7 @@ void Core::Entity::Player::calculateStats()
 {
    uint8_t tribe = getLookAt( Common::CharaLook::Tribe );
    uint8_t level = getLevel();
-   uint8_t job = getClass();
+   uint8_t job = static_cast< uint8_t >( getClass() );
 
    auto classInfoIt = g_exdData.m_classJobInfoMap.find( job );
    auto tribeInfoIt = g_exdData.m_tribeInfoMap.find( tribe );
@@ -345,7 +354,7 @@ void Core::Entity::Player::teleport( uint16_t aetheryteId, uint8_t type )
 
 void Core::Entity::Player::forceZoneing( uint32_t zoneId )
 {
-   m_queuedZoneing = boost::make_shared< QueuedZoning >( zoneId, getPos(), Util::getTimeMs(), 0 );
+   m_queuedZoneing = boost::make_shared< QueuedZoning >( zoneId, getPos(), Util::getTimeMs(), 0.f );
    //performZoning( zoneId, Common::ZoneingType::None, getPos() );
 }
 
@@ -378,9 +387,6 @@ void Core::Entity::Player::setZone( uint32_t zoneId )
 
    m_pCurrentZone = pZone;
    m_pCurrentZone->pushActor( shared_from_this() );
-
-   // mark the player for a position update in DB
-   setSyncFlag( PlayerSyncFlags::Position );
 
    GamePacketNew< FFXIVIpcInit, ServerZoneIpcType > initPacket( getId() );
    initPacket.data().charId = getId();
@@ -415,7 +421,7 @@ void Core::Entity::Player::setZone( uint32_t zoneId )
       queuePacket( initUIPacket );
 
       GamePacketNew< FFXIVIpcPlayerClassInfo, ServerZoneIpcType > classInfoPacket( getId() );
-      classInfoPacket.data().classId = getClass();
+      classInfoPacket.data().classId = static_cast< uint8_t >( getClass() );
       classInfoPacket.data().unknown = 1;
       classInfoPacket.data().level = getLevel();
       classInfoPacket.data().level1 = getLevel();
@@ -506,9 +512,6 @@ void Core::Entity::Player::registerAetheryte( uint8_t aetheryteId )
    Util::valueToFlagByteIndexValue( aetheryteId, value, index );
 
    m_aetheryte[index] |= value;
-
-   setSyncFlag( Aetherytes );
-
    queuePacket( ActorControlPacket143( getId(), LearnTeleport, aetheryteId, 1 ) );
 
 }
@@ -549,8 +552,6 @@ void Core::Entity::Player::discover( int16_t map_id, int16_t sub_id )
 
    m_discovery[index] |= value;
 
-   setSyncFlag( PlayerSyncFlags::Discovery );
-
    uint16_t level = getLevel();
 
    uint32_t exp = ( g_exdData.m_paramGrowthInfoMap[level].needed_exp * 5 / 100 );
@@ -578,13 +579,11 @@ void Core::Entity::Player::setNewAdventurer( bool state )
    //}
    sendStateFlags();
    m_bNewAdventurer = state;
-   setSyncFlag( PlayerSyncFlags::NewAdventurer );
 }
 
 void Core::Entity::Player::resetDiscovery()
 {
    memset( m_discovery, 0, sizeof( m_discovery ) );
-   setSyncFlag( PlayerSyncFlags::Discovery );
 }
 
 void Core::Entity::Player::changePosition( float x, float y, float z, float o )
@@ -604,7 +603,6 @@ void Core::Entity::Player::learnAction( uint8_t actionId )
 
    m_unlocks[index] |= value;
 
-   setSyncFlag( Unlocks );
    queuePacket( ActorControlPacket143( getId(), ToggleActionUnlock, actionId, 1 ) );
 }
 
@@ -616,7 +614,6 @@ void Core::Entity::Player::learnSong( uint8_t songId, uint32_t itemId )
 
    m_orchestrion[index] |= value;
 
-   setSyncFlag( Unlocks );
    queuePacket( ActorControlPacket143( getId(), ToggleOrchestrionUnlock, songId, 1, itemId ) );
 }
 
@@ -665,7 +662,6 @@ void Core::Entity::Player::gainExp( uint32_t amount )
    }
 
    sendStatusUpdate();
-   setSyncFlag( PlayerSyncFlags::ExpLevel );
 }
 
 void Core::Entity::Player::gainLevel()
@@ -680,8 +676,8 @@ void Core::Entity::Player::gainLevel()
    m_mp = getMaxMp();
 
    GamePacketNew< FFXIVIpcStatusEffectList, ServerZoneIpcType > effectListPacket( getId() );
-   effectListPacket.data().classId = getClass();
-   effectListPacket.data().classId1 = getClass();
+   effectListPacket.data().classId = static_cast< uint8_t > ( getClass() );
+   effectListPacket.data().classId1 = static_cast< uint8_t > ( getClass() );
    effectListPacket.data().level = getLevel();
    effectListPacket.data().current_hp = getMaxHp();
    effectListPacket.data().current_mp = getMaxMp();
@@ -695,8 +691,8 @@ void Core::Entity::Player::gainLevel()
 
 
    GamePacketNew< FFXIVIpcUpdateClassInfo, ServerZoneIpcType > classInfoPacket( getId() );
-   classInfoPacket.data().classId = getClass();
-   classInfoPacket.data().classId1 = getClass();
+   classInfoPacket.data().classId = static_cast< uint8_t > ( getClass() );
+   classInfoPacket.data().classId1 = static_cast< uint8_t > ( getClass() );
    classInfoPacket.data().level = getLevel();
    classInfoPacket.data().nextLevelIndex = getLevel();
    classInfoPacket.data().currentExp = getExp();
@@ -785,30 +781,25 @@ void Core::Entity::Player::setClassJob( Core::Common::ClassJob classJob )
    m_tp = 0;
 
    GamePacketNew< FFXIVIpcPlayerClassInfo, ServerZoneIpcType > classInfoPacket( getId() );
-   classInfoPacket.data().classId = getClass();
+   classInfoPacket.data().classId = static_cast< uint8_t >( getClass() );
    classInfoPacket.data().level = getLevel();
    queuePacket( classInfoPacket );
 
    sendToInRangeSet( ActorControlPacket142( getId(), ClassJobChange, 0x04 ), true );
 
-   setSyncFlag( Status );
    sendStatusUpdate( true );
 }
 
 void Core::Entity::Player::setLevel( uint8_t level )
 {
-   uint8_t classJobIndex = g_exdData.m_classJobInfoMap[static_cast< uint8_t >( getClass() )].exp_idx;
+   uint8_t classJobIndex = g_exdData.m_classJobInfoMap[static_cast< uint8_t >( static_cast< uint8_t >( getClass() ) )].exp_idx;
    m_classArray[classJobIndex] = level;
-
-   setSyncFlag( PlayerSyncFlags::ExpLevel );
 }
 
 void Core::Entity::Player::setLevelForClass( uint8_t level, Core::Common::ClassJob classjob )
 {
     uint8_t classJobIndex = g_exdData.m_classJobInfoMap[static_cast< uint8_t >( classjob )].exp_idx;
     m_classArray[classJobIndex] = level;
-
-    setSyncFlag( PlayerSyncFlags::ExpLevel );
 }
 
 void Core::Entity::Player::sendModel()
@@ -825,7 +816,6 @@ uint32_t Core::Entity::Player::getModelForSlot( Inventory::EquipSlot slot )
 void Core::Entity::Player::setModelForSlot( Inventory::EquipSlot slot, uint32_t val )
 {
    m_modelEquip[slot] = val;
-   setSyncFlag( PlayerSyncFlags::Status );
 }
 
 uint64_t Core::Entity::Player::getModelMainWeapon() const
@@ -873,7 +863,6 @@ uint8_t Core::Entity::Player::getLookAt( uint8_t index ) const
 void Core::Entity::Player::setLookAt( uint8_t index, uint8_t value )
 {
    m_customize[index] = value;
-   setSyncFlag( PlayerSyncFlags::Look );
 }
 
 // spawn this player for pTarget
@@ -921,7 +910,6 @@ uint32_t Core::Entity::Player::getLastPing() const
    return m_lastPing;
 }
 
-
 void Core::Entity::Player::setVoiceId( uint8_t voiceId )
 {
    m_voice = voiceId;
@@ -937,8 +925,6 @@ void Core::Entity::Player::setGc( uint8_t gc )
    gcAffPacket.data().gcRank[1] = m_gcRank[1];
    gcAffPacket.data().gcRank[2] = m_gcRank[2];
    queuePacket( gcAffPacket );
-
-   setSyncFlag( PlayerSyncFlags::GC );
 }
 
 void Core::Entity::Player::setGcRankAt( uint8_t index, uint8_t rank )
@@ -951,8 +937,6 @@ void Core::Entity::Player::setGcRankAt( uint8_t index, uint8_t rank )
    gcAffPacket.data().gcRank[1] = m_gcRank[1];
    gcAffPacket.data().gcRank[2] = m_gcRank[2];
    queuePacket( gcAffPacket );
-
-   setSyncFlag( PlayerSyncFlags::GC );
 }
 
 const uint8_t* Core::Entity::Player::getStateFlags() const
@@ -1056,10 +1040,7 @@ void Core::Entity::Player::update( int64_t currTime )
    }
 
    if( m_hp <= 0 && m_status != ActorStatus::Dead )
-   {
       die();
-      setSyncFlag( PlayerSyncFlags::Status );
-   }
 
    if( !isAlive() )
       return;
@@ -1084,9 +1065,9 @@ void Core::Entity::Player::update( int64_t currTime )
                uint32_t range = 7;
 
                // default autoattack range for ranged classes
-               if( getClass() == JOB_MACHINIST ||
-                   getClass() == JOB_BARD ||
-                   getClass() == CLASS_ARCHER )
+               if( getClass() == ClassJob::Machinist ||
+                   getClass() == ClassJob::Bard ||
+                   getClass() == ClassJob::Archer )
                   range = 25;
 
 
@@ -1110,14 +1091,9 @@ void Core::Entity::Player::update( int64_t currTime )
    {
       // add 3 seconds to total play time
       m_playTime += 3;
-      setSyncFlag( PlayerSyncFlags::PlayTime );
-
       m_lastTickTime = currTime;
       onTick();
    }
-
-   createUpdateSql();
-
 }
 
 void Core::Entity::Player::onMobKill( uint16_t nameId )
@@ -1138,11 +1114,6 @@ void Core::Entity::Player::freePlayerSpawnId( uint32_t actorId )
 
 }
 
-void Core::Entity::Player::setSyncFlag( uint32_t updateFlag )
-{
-   m_updateFlags |= updateFlag;
-}
-
 uint8_t * Core::Entity::Player::getAetheryteArray()
 {
    return m_aetheryte;
@@ -1154,8 +1125,6 @@ void Core::Entity::Player::setHomepoint( uint8_t aetheryteId )
    m_homePoint = aetheryteId;
 
    queuePacket( ActorControlPacket143( getId(), SetHomepoint, aetheryteId ) );
-
-   setSyncFlag( HomePoint );
 }
 
 /*! get homepoint */
@@ -1276,9 +1245,6 @@ void Core::Entity::Player::performZoning(uint16_t zoneId, const Common::FFXIVARR
    m_zoneId = zoneId;
    m_bMarkedForZoning = true;
    setRotation( rotation );
-
-   // mark the player for a position update in DB
-   setSyncFlag( PlayerSyncFlags::Position );
    setZone( zoneId );
 }
 
@@ -1303,8 +1269,6 @@ void Core::Entity::Player::setSearchInfo( uint8_t selectRegion, uint8_t selectCl
    m_searchSelectClass = selectClass;
    memset( &m_searchMessage[0], 0, sizeof( searchMessage ) );
    strcpy( &m_searchMessage[0], searchMessage );
-
-   setSyncFlag( PlayerSyncFlags::SearchInfo );
 }
 
 const char* Core::Entity::Player::getSearchMessage() const
@@ -1345,8 +1309,6 @@ void Core::Entity::Player::updateHowtosSeen( uint32_t howToId )
    uint8_t value = 1 << bitIndex;
 
    m_howTo[index] |= value;
-
-   setSyncFlag( PlayerSyncFlags::HowTo );
 }
 
 
@@ -1444,7 +1406,7 @@ uint8_t * Core::Entity::Player::getTitleList()
 
 uint16_t Core::Entity::Player::getTitle() const
 {
-   return m_title;
+   return m_activeTitle;
 }
 
 void Core::Entity::Player::addTitle( uint16_t titleId )
@@ -1454,7 +1416,6 @@ void Core::Entity::Player::addTitle( uint16_t titleId )
    Util::valueToFlagByteIndexValue( titleId, value, index );
 
    m_titleList[index] |= value;
-   setSyncFlag( PlayerSyncFlags::Title );
 }
 
 void Core::Entity::Player::setTitle( uint16_t titleId )
@@ -1466,10 +1427,9 @@ void Core::Entity::Player::setTitle( uint16_t titleId )
    if ( ( m_titleList[index] & value ) == 0 )   // Player doesn't have title - bail
       return;
 
-   m_title = titleId;
+   m_activeTitle = titleId;
 
    sendToInRangeSet( ActorControlPacket142( getId(), SetTitle, titleId ), true );
-   setSyncFlag( PlayerSyncFlags::Title );
 }
 
 void Core::Entity::Player::setEquipDisplayFlags( uint8_t state )
@@ -1478,12 +1438,38 @@ void Core::Entity::Player::setEquipDisplayFlags( uint8_t state )
    GamePacketNew< FFXIVIpcEquipDisplayFlags, ServerZoneIpcType > paramPacket( getId() );
    paramPacket.data().bitmask = m_equipDisplayFlags;
    sendToInRangeSet( paramPacket, true );
-   setSyncFlag( PlayerSyncFlags::Status );
 }
 
 uint8_t Core::Entity::Player::getEquipDisplayFlags() const
 {
    return m_equipDisplayFlags;
+}
+
+void Core::Entity::Player::mount( uint32_t id )
+{
+// TODO: Fix me for SQL rewrite
+/*   m_mount = id;
+   sendToInRangeSet( ActorControlPacket142( getId(), ActorControlType::SetStatus, static_cast< uint8_t >( Entity::Actor::ActorStatus::Mounted )), true );
+   sendToInRangeSet( ActorControlPacket143( getId(), 0x39e, 12 ), true ); //?
+
+   GamePacketNew< FFXIVIpcMount, ServerZoneIpcType > mountPacket( getId() );
+   mountPacket.data().id = m_mount;
+   sendToInRangeSet( mountPacket, true );*/
+}
+
+void Core::Entity::Player::dismount()
+{
+// TODO: Fix me for SQL rewrite
+/*   sendToInRangeSet( ActorControlPacket142( getId(), ActorControlType::SetStatus, static_cast< uint8_t >( Entity::Actor::ActorStatus::Idle )), true );
+   sendToInRangeSet( ActorControlPacket143( getId(), ActorControlType::Dismount, 1 ), true );
+   m_mount = 0;*/
+}
+
+uint8_t Core::Entity::Player::getCurrentMount() const
+{
+// TODO: Fix me for SQL rewrite
+//   return m_mount;
+   return 0;
 }
 
 void Core::Entity::Player::autoAttack( ActorPtr pTarget )
@@ -1498,9 +1484,9 @@ void Core::Entity::Player::autoAttack( ActorPtr pTarget )
    uint32_t damage = static_cast< uint32_t >( mainWeap->getAutoAttackDmg() );
    uint32_t variation = 0 + rand() % 3;
 
-   if ( getClass() == JOB_MACHINIST ||
-      getClass() == JOB_BARD ||
-      getClass() == CLASS_ARCHER )
+   if ( getClass() == ClassJob::Machinist||
+      getClass() == ClassJob::Bard ||
+      getClass() == ClassJob::Archer )
    {
       GamePacketNew< FFXIVIpcEffect, ServerZoneIpcType > effectPacket(getId());
       effectPacket.data().targetId = pTarget->getId();
@@ -1557,7 +1543,6 @@ uint32_t Core::Entity::Player::getCFPenaltyTimestamp() const
 void Core::Entity::Player::setCFPenaltyTimestamp( uint32_t timestamp )
 {
    m_cfPenaltyUntil = timestamp;
-   setSyncFlag( PlayerSyncFlags::CFPenaltyTime );
 }
 
 uint32_t Core::Entity::Player::getCFPenaltyMinutes() const
@@ -1586,7 +1571,6 @@ uint8_t Core::Entity::Player::getOpeningSequence() const
 
 void Core::Entity::Player::setOpeningSequence( uint8_t seq )
 {
-   setSyncFlag( OpeningSeq );
    m_openingSequence = seq;
 }
 

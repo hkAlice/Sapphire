@@ -1,13 +1,11 @@
 #include <src/servers/Server_Common/Common.h>
 #include <src/servers/Server_Common/Network/CommonNetwork.h>
-#include <src/servers/Server_Common/Database/Database.h>
 #include <src/servers/Server_Common/Network/GamePacketNew.h>
 #include <src/servers/Server_Common/Logging/Logger.h>
 #include <src/servers/Server_Common/Exd/ExdData.h>
 #include <src/servers/Server_Common/Network/PacketContainer.h>
 
 #include <boost/format.hpp>
-
 
 #include "src/servers/Server_Zone/Network/GameConnection.h"
 
@@ -38,7 +36,6 @@
 #include "src/servers/Server_Zone/Action/ActionTeleport.h"
 
 extern Core::Logger g_log;
-extern Core::Db::Database g_database;
 extern Core::ServerZone g_serverZone;
 extern Core::ZoneMgr g_zoneMgr;
 extern Core::Data::ExdData g_exdData;
@@ -47,7 +44,6 @@ extern Core::DebugCommandHandler g_gameCommandMgr;
 using namespace Core::Common;
 using namespace Core::Network::Packets;
 using namespace Core::Network::Packets::Server;
-
 
 void Core::Network::GameConnection::actionHandler( const Packets::GamePacket& inPacket,
                                                    Entity::PlayerPtr pPlayer )
@@ -106,6 +102,11 @@ void Core::Network::GameConnection::actionHandler( const Packets::GamePacket& in
             pPlayer->changeTarget( targetId );
             break;
         }
+        case 0x65:
+        {
+           pPlayer->dismount();
+           break;
+        }
         case 0x68: // Remove status (clicking it off)
         {
            // todo: check if status can be removed by client from exd
@@ -137,7 +138,7 @@ void Core::Network::GameConnection::actionHandler( const Packets::GamePacket& in
         }
         case 0x12E: // Set player title
         {
-           pPlayer->setTitle( param1 );
+           pPlayer->setTitle( static_cast< uint16_t >( param1 ) );
            break;
         }
         case 0x12F: // Get title list
@@ -196,7 +197,7 @@ void Core::Network::GameConnection::actionHandler( const Packets::GamePacket& in
                         pPlayer->resetHp();
                         pPlayer->resetMp();
                         pPlayer->setStatus( Entity::Actor::ActorStatus::Idle );
-                        pPlayer->setSyncFlag( Status );
+
                         pPlayer->sendToInRangeSet( ActorControlPacket143( pPlayer->getId(), ZoneIn, 0x01, 0x01, 0, 111 ), true );
                         pPlayer->sendToInRangeSet( ActorControlPacket142( pPlayer->getId(), SetStatus, static_cast< uint8_t >( Entity::Actor::ActorStatus::Idle ) ), true );
                     }
@@ -228,8 +229,8 @@ void Core::Network::GameConnection::actionHandler( const Packets::GamePacket& in
                 auto fromAetheryte = g_exdData.getAetheryteInfo( g_exdData.m_zoneInfoMap[pPlayer->getZoneId()].aetheryte_index );
 
                 // calculate cost - does not apply for favorite points or homepoints neither checks for aether tickets
-                auto cost = ( sqrt( pow( fromAetheryte->map_coord_x - targetAetheryte->map_coord_x, 2 ) +
-                                    pow( fromAetheryte->map_coord_y - targetAetheryte->map_coord_y, 2 ) ) / 2 ) + 100;
+                auto cost = static_cast< uint16_t > ( ( sqrt( pow( fromAetheryte->map_coord_x - targetAetheryte->map_coord_x, 2 ) +
+                                    pow( fromAetheryte->map_coord_y - targetAetheryte->map_coord_y, 2 ) ) / 2 ) + 100 );
 
                 // cap at 999 gil
                 cost = cost > 999 ? 999 : cost;

@@ -8,7 +8,6 @@
 
 #include <src/servers/Server_Common/Logging/Logger.h>
 #include <src/servers/Server_Common/Config/XMLConfig.h>
-#include <src/servers/Server_Common/Database/Database.h>
 
 #include <src/servers/Server_Common/Network/Connection.h>
 #include <src/servers/Server_Common/Network/Hive.h>
@@ -16,6 +15,12 @@
 
 #include <src/servers/Server_Common/Exd/ExdData.h>
 #include <src/servers/Server_Common/Crypt/base64.h>
+
+
+#include <Server_Common/Database/DbLoader.h>
+#include <Server_Common/Database/CharaDbConnection.h>
+#include <Server_Common/Database/DbWorkerPool.h>
+#include <Server_Common/Database/PreparedStatement.h>
 
 //Added for the default_resource example
 #include <fstream>
@@ -30,36 +35,38 @@
 
 
 Core::Logger g_log;
-Core::Db::Database g_database;
+Core::Db::DbWorkerPool< Core::Db::CharaDbConnection > g_charaDb;
 Core::Data::ExdData g_exdData;
 Core::Network::SapphireAPI g_sapphireAPI;
 
 using namespace std;
 using namespace boost::property_tree;
 
-typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
-typedef SimpleWeb::Client<SimpleWeb::HTTP> HttpClient;
+typedef SimpleWeb::Server< SimpleWeb::HTTP > HttpServer;
+typedef SimpleWeb::Client< SimpleWeb::HTTP > HttpClient;
 
 //Added for the default_resource example
-void default_resource_send( const HttpServer &server, const shared_ptr<HttpServer::Response> &response,
-                            const shared_ptr<ifstream> &ifs );
+void default_resource_send( const HttpServer &server, const shared_ptr< HttpServer::Response > &response,
+                            const shared_ptr< ifstream > &ifs );
 
 
-auto m_pConfig = boost::make_shared<Core::XMLConfig>();
+auto m_pConfig = boost::make_shared< Core::XMLConfig >();
 HttpServer server;
-std::string configPath("config/settings_rest.xml");
+std::string configPath( "config/settings_rest.xml" );
 
 void reloadConfig()
 {
-   m_pConfig = boost::make_shared<Core::XMLConfig>();
+   m_pConfig = boost::make_shared< Core::XMLConfig >();
 
-   if (!m_pConfig->loadConfig(configPath))
+   if( !m_pConfig->loadConfig( configPath ) )
       throw "Error loading config ";
 }
 
-void print_request_info( shared_ptr<HttpServer::Request> request ) {
+void print_request_info( shared_ptr< HttpServer::Request > request ) 
+{
    g_log.info( "Request from " + request->remote_endpoint_address + " (" + request->path + ")" );
 }
+
 bool loadSettings( int32_t argc, char* argv[] )
 {
    g_log.info( "Loading config " + configPath );
@@ -71,7 +78,7 @@ bool loadSettings( int32_t argc, char* argv[] )
    }
 
    std::vector<std::string> args( argv + 1, argv + argc );
-   for( auto i = 0; i + 1 < args.size(); i += 2 )
+   for( size_t i = 0; i + 1 < args.size(); i += 2 )
    {
       std::string arg( "" );
       std::string val( "" );
@@ -140,29 +147,29 @@ bool loadSettings( int32_t argc, char* argv[] )
       return false;
    }
 
-   Core::Db::DatabaseParams params;
-   params.bufferSize = 16384;
-   params.connectionCount = 3;
-   params.databaseName = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Database", "sapphire" );
-   params.hostname = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Host", "127.0.0.1" );
-   params.password = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Pass", "" );
-   params.port = m_pConfig->getValue< uint16_t >( "Settings.General.Mysql.Port", 3306 );
-   params.username = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Username", "root" );
+   Core::Db::DbLoader loader;
 
-   server.config.port = std::stoul( m_pConfig->getValue<std::string>( "Settings.General.HttpPort", "80" ) );
+   Core::Db::ConnectionInfo info;
+   info.password = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Pass", "" );
+   info.host = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Host", "127.0.0.1" );
+   info.database = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Database", "sapphire" );
+   info.port = m_pConfig->getValue< uint16_t >( "Settings.General.Mysql.Port", 3306 );
+   info.user = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Username", "root" );
+   info.syncThreads = m_pConfig->getValue< uint8_t >( "Settings.General.Mysql.SyncThreads", 2 );
+   info.asyncThreads = m_pConfig->getValue< uint8_t >( "Settings.General.Mysql.AsyncThreads", 2 );
 
-   if( !g_database.initialize( params ) )
-   {
-      std::this_thread::sleep_for( std::chrono::milliseconds( 5000 ) );
+   loader.addDb( g_charaDb, info );
+   if( !loader.initDbs() )
       return false;
-   }
 
-   g_log.info("Database: Connected to " + params.hostname + ":" + std::to_string(params.port));
+   server.config.port = static_cast< uint16_t >( std::stoul( m_pConfig->getValue< std::string >( "Settings.General.HttpPort", "80" ) ) );
+
+   g_log.info( "Database: Connected to " + info.host + ":" + std::to_string( info.port ) );
 
    return true;
 }
 
-int main(int argc, char* argv[])
+int main( int argc, char* argv[] )
 {
    g_log.setLogPath( "log\\SapphireAPI" );
    g_log.init();
@@ -597,7 +604,7 @@ int main(int argc, char* argv[])
 		   auto path = boost::filesystem::canonical( web_root_path / "news.xml" );
 		   //Check if path is within web_root_path
 		   if( distance( web_root_path.begin(), web_root_path.end() ) > distance( path.begin(), path.end() ) ||
-			   !equal( web_root_path.begin(), web_root_path.end(), path.begin() ) )
+			   !std::equal( web_root_path.begin(), web_root_path.end(), path.begin() ) )
 			   throw invalid_argument( "path must be within root path" );
 		   if( !( boost::filesystem::exists( path ) && boost::filesystem::is_regular_file( path ) ) )
 			   throw invalid_argument( "file does not exist" );
@@ -638,7 +645,7 @@ int main(int argc, char* argv[])
 		   auto path = boost::filesystem::canonical( web_root_path / "headlines.xml" );
 		   //Check if path is within web_root_path
 		   if( distance( web_root_path.begin(), web_root_path.end() ) > distance( path.begin(), path.end() ) ||
-			   !equal( web_root_path.begin(), web_root_path.end(), path.begin() ) )
+			   !std::equal( web_root_path.begin(), web_root_path.end(), path.begin() ) )
 			   throw invalid_argument( "path must be within root path" );
 		   if( !( boost::filesystem::exists( path ) && boost::filesystem::is_regular_file( path ) ) )
 			   throw invalid_argument( "file does not exist" );
@@ -683,7 +690,7 @@ int main(int argc, char* argv[])
          auto path = boost::filesystem::canonical( web_root_path / request->path );
          //Check if path is within web_root_path
          if( distance( web_root_path.begin(), web_root_path.end() ) > distance( path.begin(), path.end() ) ||
-             !equal( web_root_path.begin(), web_root_path.end(), path.begin() ) )
+             !std::equal( web_root_path.begin(), web_root_path.end(), path.begin() ) )
             throw invalid_argument( "path must be within root path" );
          if( boost::filesystem::is_directory( path ) )
             path /= "index.html";
@@ -709,7 +716,7 @@ int main(int argc, char* argv[])
          else
             throw invalid_argument( "could not read file" );
       }
-      catch( const exception &e )
+      catch( const exception & )
       {
          string content = "Path not found: " + request->path;
          *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;

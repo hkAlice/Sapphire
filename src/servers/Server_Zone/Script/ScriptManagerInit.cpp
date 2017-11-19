@@ -1,7 +1,7 @@
-#include <src/servers/Server_Common/Logging/Logger.h>
 #include <chaiscript/chaiscript.hpp>
 
-#include <src/servers/Server_Common/Script/ChaiscriptStdLib.h>
+#include <Server_Common/Logging/Logger.h>
+#include <Server_Common/Script/ChaiscriptStdLib.h>
 
 #include "src/servers/Server_Zone/Script/ScriptManager.h"
 
@@ -15,11 +15,6 @@
 #include "src/servers/Server_Zone/StatusEffect/StatusEffect.h"
 
 #include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/format.hpp>
-#include <boost/foreach.hpp>
-
 
 extern Core::Logger g_log;
 
@@ -52,6 +47,7 @@ int Core::Scripting::ScriptManager::init()
    m_pChaiHandler->add( chaiscript::fun( &Entity::Player::returnToHomepoint ), "returnToHomepoint" );
    m_pChaiHandler->add( chaiscript::fun( &Entity::Player::teleport ), "teleport" );
    m_pChaiHandler->add( chaiscript::fun( &Entity::Player::prepareZoning ), "prepareZoning" );
+   m_pChaiHandler->add( chaiscript::fun( &Entity::Player::isInCombat ), "isInCombat" );
    
    m_pChaiHandler->add( chaiscript::fun( &Entity::Player::getCurrency ), "getCurrency" );
    m_pChaiHandler->add( chaiscript::fun( &Entity::Player::addCurrency ), "addCurrency" );

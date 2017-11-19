@@ -18,17 +18,13 @@ set_target_properties(server_lobby PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
     RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
     RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin/"
 )
 
-if(MSVC)
-    message(STATUS "Enabling Edit and Continue..")
-    set_property(TARGET server_lobby APPEND_STRING PROPERTY COMPILE_FLAGS " /INCREMENTAL /ZI")
-endif()
-
 if (UNIX)
-  target_link_libraries(server_lobby Common xivdat pthread mysqlclient dl z)
+  target_link_libraries(server_lobby Common xivdat pthread mysqlclient mysqlConnector dl z)
 else()
-  target_link_libraries(server_lobby Common xivdat libmysql zlib1)
+  target_link_libraries(server_lobby Common xivdat libmysql mysqlConnector zlib1)
 endif()
 
 target_link_libraries(server_lobby ${Boost_LIBRARIES} ${Boost_LIBRARIES})

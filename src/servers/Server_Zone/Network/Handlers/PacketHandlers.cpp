@@ -1,6 +1,5 @@
 #include <src/servers/Server_Common/Common.h>
 #include <src/servers/Server_Common/Network/CommonNetwork.h>
-#include <src/servers/Server_Common/Database/Database.h>
 #include <src/servers/Server_Common/Network/GamePacketNew.h>
 #include <src/servers/Server_Common/Logging/Logger.h>
 #include <src/servers/Server_Common/Exd/ExdData.h>
@@ -38,8 +37,9 @@
 #include "src/servers/Server_Zone/Action/Action.h"
 #include "src/servers/Server_Zone/Action/ActionTeleport.h"
 
+#include <Server_Common/Database/DatabaseDef.h>
+
 extern Core::Logger g_log;
-extern Core::Db::Database g_database;
 extern Core::ServerZone g_serverZone;
 extern Core::ZoneMgr g_zoneMgr;
 extern Core::Data::ExdData g_exdData;
@@ -84,7 +84,7 @@ void Core::Network::GameConnection::setSearchInfoHandler( const Packets::GamePac
    GamePacketNew< FFXIVIpcSetSearchInfo, ServerZoneIpcType > searchInfoPacket( pPlayer->getId() );
    searchInfoPacket.data().onlineStatusFlags = status;
    searchInfoPacket.data().selectRegion = pPlayer->getSearchSelectRegion();
-   sprintf( searchInfoPacket.data().searchMessage, pPlayer->getSearchMessage() );
+   strcpy( searchInfoPacket.data().searchMessage, pPlayer->getSearchMessage() );
    queueOutPacket( searchInfoPacket );
 
    pPlayer->sendToInRangeSet( ActorControlPacket142( pPlayer->getId(), SetStatusIcon,
@@ -98,7 +98,7 @@ void Core::Network::GameConnection::reqSearchInfoHandler( const Packets::GamePac
    GamePacketNew< FFXIVIpcInitSearchInfo, ServerZoneIpcType > searchInfoPacket( pPlayer->getId() );
    searchInfoPacket.data().onlineStatusFlags = pPlayer->getOnlineStatusMask();
    searchInfoPacket.data().selectRegion = pPlayer->getSearchSelectRegion();
-   sprintf( searchInfoPacket.data().searchMessage, pPlayer->getSearchMessage() );
+   strcpy( searchInfoPacket.data().searchMessage, pPlayer->getSearchMessage() );
    queueOutPacket( searchInfoPacket );
 }
 
@@ -189,8 +189,6 @@ void Core::Network::GameConnection::updatePositionHandler( const Packets::GamePa
    pPlayer->setPosition( inPacket.getValAt< float >( 0x2c ),
                          inPacket.getValAt< float >( 0x30 ),
                          inPacket.getValAt< float >( 0x34 ) );
-
-   pPlayer->setSyncFlag( PlayerSyncFlags::Position );
 
    if( ( pPlayer->getCurrentAction() != nullptr ) && bPosChanged )
       pPlayer->getCurrentAction()->setInterrupted();
@@ -331,8 +329,6 @@ void Core::Network::GameConnection::zoneLineHandler( const Packets::GamePacket& 
    }
 
    pPlayer->performZoning( targetZone, targetPos, rotation);
-   pPlayer->setSyncFlag( PlayerSyncFlags::Position );
-
 }
 
 
@@ -341,26 +337,24 @@ void Core::Network::GameConnection::discoveryHandler( const Packets::GamePacket&
 {
    uint32_t ref_position_id = inPacket.getValAt< uint32_t >( 0x20 );
 
-   auto pQR = g_database.query( "SELECT id, map_id, discover_id "
-                                "FROM discoveryinfo "
-                                "WHERE id = " + std::to_string( ref_position_id ) + ";" );
+   auto pQR = g_charaDb.query( "SELECT id, map_id, discover_id "
+                               "FROM discoveryinfo "
+                               "WHERE id = " + std::to_string( ref_position_id ) + ";" );
 
-   if( !pQR )
+   if( !pQR->next() )
    {
       pPlayer->sendNotice( "Discovery ref pos ID: " + std::to_string( ref_position_id ) + " not found. " );
       return;
    }
 
-   Db::Field *field = pQR->fetch();
-
    GamePacketNew< FFXIVIpcDiscovery, ServerZoneIpcType > discoveryPacket( pPlayer->getId() );
-   discoveryPacket.data().map_id = field[1].get< int16_t >();
-   discoveryPacket.data().map_part_id = field[2].get< int16_t >();
+   discoveryPacket.data().map_id = pQR->getUInt( 2 );
+   discoveryPacket.data().map_part_id = pQR->getUInt( 3 );
 
    pPlayer->queuePacket( discoveryPacket );
    pPlayer->sendNotice( "Discovery ref pos ID: " + std::to_string( ref_position_id ) );
 
-   pPlayer->discover( field[1].get< int16_t >(), field[2].get< int16_t >() );
+   pPlayer->discover( pQR->getUInt16( 2 ), pQR->getUInt16( 3 ) );
 
 }
 
@@ -546,6 +540,8 @@ void Core::Network::GameConnection::logoutHandler( const Packets::GamePacket& in
    logoutPacket.data().flags1 = 0x02;
    logoutPacket.data().flags2 = 0x2000;
    queueOutPacket( logoutPacket );
+
+   pPlayer->setMarkedForRemoval();
 }
 
 

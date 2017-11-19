@@ -1,26 +1,29 @@
-#include <thread>
-#include <chrono>
-#include <boost/lexical_cast.hpp>
-
 #include "ServerZone.h"
 
+#include <src/servers/Server_Common/Version.h>
 #include <src/servers/Server_Common/Logging/Logger.h>
 #include <src/servers/Server_Common/Config/XMLConfig.h>
-#include <src/servers/Server_Common/Database/Database.h>
+#include <src/servers/Server_Common/Version.h>
 
-#include <src/servers/Server_Common/Network/Connection.h>
-#include <src/servers/Server_Common/Network/Hive.h>
-#include <src/servers/Server_Common/Network/Acceptor.h>
+#include <MySqlBase.h>
+#include <Connection.h>
 
-#include <src/servers/Server_Common/Exd/ExdData.h>
-#include <src/servers/Server_Common/Network/PacketContainer.h>
+#include <Server_Common/Network/Connection.h>
+#include <Server_Common/Network/Hive.h>
 
-#include "src/servers/Server_Zone/Network/GameConnection.h"
+#include <Server_Common/Exd/ExdData.h>
+#include <Server_Common/Network/PacketContainer.h>
+#include <Server_Common/Database/DbLoader.h>
+#include <Server_Common/Database/CharaDbConnection.h>
+#include <Server_Common/Database/DbWorkerPool.h>
+#include <Server_Common/Database/PreparedStatement.h>
+
+#include "Network/GameConnection.h"
 #include "Session.h"
 
-#include "src/servers/Server_Zone/Zone/ZoneMgr.h"
+#include "Zone/ZoneMgr.h"
 
-#include "src/servers/Server_Zone/DebugCommand/DebugCommandHandler.h"
+#include "DebugCommand/DebugCommandHandler.h"
 
 #include "Script/ScriptManager.h"
 #include "Linkshell/LinkshellMgr.h"
@@ -30,18 +33,17 @@
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string.hpp>
-
+#include <thread>
 
 Core::Logger g_log;
-Core::Db::Database g_database;
 Core::DebugCommandHandler g_gameCommandMgr;
 Core::Scripting::ScriptManager g_scriptMgr;
 Core::Data::ExdData g_exdData;
 Core::ZoneMgr g_zoneMgr;
 Core::LinkshellMgr g_linkshellMgr;
+Core::Db::DbWorkerPool< Core::Db::CharaDbConnection > g_charaDb;
 
-
-Core::ServerZone::ServerZone( const std::string& configPath, uint16_t serverId )
+Core::ServerZone::ServerZone( const std::string& configPath )
    : m_configPath( configPath ),
      m_bRunning( true )
 {
@@ -82,7 +84,7 @@ bool Core::ServerZone::registerBnpcTemplate( std::string templateName, uint32_t 
 
 Core::Entity::BattleNpcTemplatePtr Core::ServerZone::getBnpcTemplate( std::string templateName )
 {
-   auto it = m_bnpcTemplates.find(templateName);
+   auto it = m_bnpcTemplates.find( templateName );
 
    if (it != m_bnpcTemplates.end())
       return nullptr;
@@ -162,23 +164,23 @@ bool Core::ServerZone::loadSettings( int32_t argc, char* argv[] )
       return false;
    }
 
-   Db::DatabaseParams params;
-   params.bufferSize = 16384;
-   params.connectionCount = 3;
-   params.databaseName = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Database", "sapphire" );
-   params.hostname = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Host", "127.0.0.1" );
-   params.password = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Pass", "" );
-   params.port = m_pConfig->getValue< uint16_t >( "Settings.General.Mysql.Port", 3306 );
-   params.username = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Username", "root" );
+   Core::Db::DbLoader loader;
 
-   if( !g_database.initialize( params ) )
-   {
-      std::this_thread::sleep_for( std::chrono::milliseconds( 5000 ) );
+   Core::Db::ConnectionInfo info;
+   info.password = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Pass", "" );
+   info.host = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Host", "127.0.0.1" );
+   info.database = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Database", "sapphire" );
+   info.port = m_pConfig->getValue< uint16_t >( "Settings.General.Mysql.Port", 3306 );
+   info.user = m_pConfig->getValue< std::string >( "Settings.General.Mysql.Username", "root" );
+   info.syncThreads = m_pConfig->getValue< uint8_t >( "Settings.General.Mysql.SyncThreads", 2 );
+   info.asyncThreads = m_pConfig->getValue< uint8_t >( "Settings.General.Mysql.AsyncThreads", 2 );
+
+   loader.addDb( g_charaDb, info );
+   if( !loader.initDbs() )
       return false;
-   }
 
    m_port = m_pConfig->getValue< uint16_t >( "Settings.General.ListenPort", 54992 );
-   m_ip = m_pConfig->getValue< std::string >( "Settings.General.ListenIp", "0.0.0.0" );;
+   m_ip = m_pConfig->getValue< std::string >( "Settings.General.ListenIp", "0.0.0.0" );
 
    return true;
 }
@@ -240,7 +242,8 @@ void Core::ServerZone::printBanner() const
 {
    g_log.info("===========================================================" );
    g_log.info( "Sapphire Server Project " );
-   g_log.info( "Version: x.y.z" );
+   g_log.info( "Version: " + Version::VERSION );
+   g_log.info( "Git Hash: " + Version::GIT_HASH );
    g_log.info( "Compiled: " __DATE__ " " __TIME__ );
    g_log.info( "===========================================================" );
 }
@@ -261,10 +264,12 @@ void Core::ServerZone::mainLoop()
          auto session = sessionIt.second;
          if( session && session->getPlayer() )
          {
+
             // if the player is in a zone, let the zone handler take care of his updates
             // else do it here.
             if( !session->getPlayer()->getCurrentZone() )
                session->update();
+
          }
       }
 
@@ -276,6 +281,19 @@ void Core::ServerZone::mainLoop()
 
          auto pPlayer = it->second->getPlayer();
 
+         // remove session of players marked for removel ( logoff / kick )
+         if( pPlayer->isMarkedForRemoval() && diff > 1 )
+         {
+            it->second->close();
+            // if( it->second.unique() )
+            {
+               g_log.info("[" + std::to_string(it->second->getId() ) + "] Session removal" );
+               it = this->m_sessionMap.erase( it );
+               continue;
+            }
+         }
+
+         // remove sessions that simply timed out
          if( diff > 20 )
          {
             g_log.info("[" + std::to_string(it->second->getId() ) + "] Session time out" );

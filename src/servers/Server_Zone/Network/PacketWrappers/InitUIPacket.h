@@ -36,9 +36,9 @@ private:
       m_data.race = player->getLookAt( Common::CharaLook::Race );
       m_data.tribe = player->getLookAt( Common::CharaLook::Tribe );
       m_data.gender = player->getLookAt( Common::CharaLook::Gender );
-      m_data.currentClass = static_cast< Common::ClassJob >( player->getClass() );
-      m_data.currentJob = static_cast< Common::ClassJob >( player->getClass() );
-      m_data.deity = static_cast< Common::GuardianDeity >( player->getGuardianDeity() );
+      m_data.currentClass = static_cast< uint8_t >( player->getClass() );
+      m_data.currentJob = static_cast< uint8_t >( player->getClass() );
+      m_data.deity = static_cast< uint8_t >( player->getGuardianDeity() );
       m_data.namedayMonth = player->getBirthMonth();
       m_data.namedayDay = player->getBirthDay();
       // TODO: Support grand company status.
@@ -51,7 +51,7 @@ private:
 
       memset( &m_data.name[0], 0, sizeof( m_data.name ) );
 
-      sprintf( &m_data.name[0], player->getName().c_str() );
+      strcpy( &m_data.name[0], player->getName().c_str() );
 
       memcpy( m_data.aetheryte, player->getAetheryteArray(), sizeof ( m_data.aetheryte ) );
 
@@ -63,6 +63,9 @@ private:
       }
 
       memcpy( m_data.orchestrionMask, player->getOrchestrionBitmask(), sizeof( m_data.orchestrionMask ) );
+
+      memset( m_data.mountGuideMask, 0xFF, sizeof( m_data.mountGuideMask) );
+      memset( m_data.fishingGuideMask, 0xFF, sizeof( m_data.fishingGuideMask ) );
 
       memcpy( m_data.unlockBitmask, player->getUnlockBitmask(), sizeof( m_data.unlockBitmask ) );
 
