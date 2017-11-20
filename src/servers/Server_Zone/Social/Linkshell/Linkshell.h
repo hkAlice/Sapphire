@@ -4,8 +4,8 @@
 #include <Server_Common/Common.h>
 #include <set>
 
-namespace Core
-{
+namespace Core {
+namespace Social {
 
 class Linkshell
 {
@@ -58,5 +58,6 @@ public:
 
 };
 
+}
 }
 #endif //SAPPHIRE_LINKSHELL_H

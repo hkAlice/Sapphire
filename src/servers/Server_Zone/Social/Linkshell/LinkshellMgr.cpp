@@ -27,7 +27,7 @@ bool Core::LinkshellMgr::loadLinkshells()
       uint32_t masterId = res->getUInt( 2 );
       std::string name = res->getString( 4 );
 
-      auto func = []( std::set< uint64_t >& outList, std::vector< char >& inData )
+      auto insertBlobInVector = []( std::set< uint64_t >& outList, std::vector< char >& inData )
       {
          if( inData.size() )
          {
@@ -39,17 +39,17 @@ bool Core::LinkshellMgr::loadLinkshells()
       std::set< uint64_t > members;
       std::vector< char > membersBin;
       membersBin = res->getBlobVector( 3 );
-      func( members, membersBin );
+      insertBlobInVector( members, membersBin );
 
       std::set< uint64_t > leaders;
       std::vector< char > leadersBin;
       leadersBin = res->getBlobVector( 5 );
-      func( members, leadersBin );
+      insertBlobInVector( members, leadersBin );
 
       std::set< uint64_t > invites;
       std::vector< char > invitesBin;
       invitesBin = res->getBlobVector( 6 );
-      func( members, invitesBin );
+      insertBlobInVector( members, invitesBin );
 
       auto lsPtr = boost::make_shared< Linkshell >( linkshellId, name, masterId, members, leaders, invites );
       m_linkshellIdMap[linkshellId] = lsPtr;

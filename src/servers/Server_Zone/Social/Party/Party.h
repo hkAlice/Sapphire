@@ -4,8 +4,8 @@
 #include <Server_Zone/Actor/Player.h>
 #include <set>
 
-namespace Core
-{
+namespace Core {
+namespace Social {
 
 class Party
 {
@@ -35,5 +35,6 @@ public:
    uint8_t getPartyMemberCount();
 };
 
+}
 }
 #endif //CORE_PARTY_H

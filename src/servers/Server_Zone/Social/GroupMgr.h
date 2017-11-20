@@ -4,12 +4,13 @@
 #include <boost/shared_ptr.hpp>
 #include <map>
 
-namespace Core
-{
-class Party;
-typedef boost::shared_ptr< Party > PartyPtr;
+namespace Core {
+namespace Social { 
 
-class PartyMgr
+class Group;
+using boost::shared_ptr< Group > GroupPtr;
+
+class GroupMgr
 {
 private:
    std::map< uint32_t, PartyPtr > m_partyIdMap;
@@ -20,5 +21,6 @@ public:
    PartyMgr();
 };
 
+}
 }
 #endif //CORE_PARTYMGR_H

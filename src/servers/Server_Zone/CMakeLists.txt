@@ -11,10 +11,12 @@ file(GLOB SERVER_PUBLIC_INCLUDE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         DebugCommand/*.h
         Event/*.h
         Inventory/*.h
-        Linkshell/*.h
         Network/*.h
         Network/Handlers/*.h
         Network/PacketWrappers/*.h
+		Social/*.h
+		Social/Linkshell/*.h
+		Social/Party/*.h
         Script/*.h
         StatusEffect/*.h
         Zone/*.h)
@@ -26,11 +28,12 @@ file(GLOB SERVER_SOURCE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         DebugCommand/*.c*
         Event/*.c*
         Inventory/*.c*
-        Linkshell/*.c*
-		Party/*.c*
         Network/*.c*
         Network/Handlers/*.c*
         Network/PacketWrappers/*.c*
+		Social/*.c*
+		Social/Linkshell/*.c*
+		Social/Party/*.c*
         Script/*.c*
         StatusEffect/*.c*
         Zone/*.c*)
