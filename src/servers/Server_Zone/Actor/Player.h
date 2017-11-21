@@ -637,6 +637,8 @@ private:
 
    // content finder info
    uint32_t m_cfPenaltyUntil; // unix time
+
+   uint8_t m_mount;
 };
 
 }
