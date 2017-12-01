@@ -53,9 +53,9 @@ set_target_properties(sapphire_zone PROPERTIES
 )
 
 if (UNIX)
-  target_link_libraries ( sapphire_zone Common xivdat pthread mysqlclient mysqlConnector dl z )
+  target_link_libraries (sapphire_zone Common xivdat pthread mysqlclient mysqlConnector dl z)
 else()
-  target_link_libraries ( sapphire_zone Common xivdat libmysql zlib1 mysqlConnector )
+  target_link_libraries (sapphire_zone Common xivdat libmysql zlib1 mysqlConnector)
 endif()
 
-target_link_libraries( sapphire_zone ${Boost_LIBRARIES} )
+target_link_libraries(sapphire_zone ${Boost_LIBRARIES})

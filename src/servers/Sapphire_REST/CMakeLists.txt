@@ -21,13 +21,13 @@ set_target_properties(sapphire_rest PROPERTIES
 )
 
 if (UNIX)
-  target_link_libraries ( sapphire_rest Common xivdat pthread mysqlclient mysqlConnector dl z )
+  target_link_libraries (sapphire_rest Common xivdat pthread mysqlclient mysqlConnector dl z)
 else()
   # ignore unchecked iterators warnings from msvc
   add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 
-  target_link_libraries ( sapphire_rest Common xivdat libmysql mysqlConnector zlib1 )
+  target_link_libraries (sapphire_rest Common xivdat libmysql mysqlConnector zlib1)
 
 endif()
 
-target_link_libraries( sapphire_rest ${Boost_LIBRARIES} ${Boost_LIBRARIES} )
+target_link_libraries(sapphire_rest ${Boost_LIBRARIES} ${Boost_LIBRARIES})
