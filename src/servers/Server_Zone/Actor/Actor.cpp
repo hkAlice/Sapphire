@@ -2,12 +2,13 @@
 #include <src/servers/Server_Common/Util/UtilMath.h>
 #include <src/servers/Server_Common/Network/PacketContainer.h>
 #include <src/servers/Server_Common/Exd/ExdData.h>
+#include <src/servers/Server_Common/Network/GamePacket.h>
 
 #include "src/servers/Server_Zone/Forwards.h"
 #include "src/servers/Server_Zone/Action/Action.h"
-#include "Actor.h"
+
 #include "src/servers/Server_Zone/Zone/Zone.h"
-#include <src/servers/Server_Common/Network/GamePacket.h>
+
 #include "src/servers/Server_Zone/Network/GameConnection.h"
 #include "src/servers/Server_Zone/Network/PacketWrappers/ActorControlPacket142.h"
 #include "src/servers/Server_Zone/Network/PacketWrappers/ActorControlPacket143.h"
@@ -19,7 +20,8 @@
 #include "src/servers/Server_Zone/Action/ActionCollision.h"
 #include "src/servers/Server_Zone/ServerZone.h"
 #include "src/servers/Server_Zone/Session.h"
-#include "CalcBattle.h"
+#include "src/servers/Server_Zone/Math/CalcBattle.h"
+#include "Actor.h"
 #include "Player.h"
 
 extern Core::ServerZone g_serverZone;
@@ -57,13 +59,13 @@ std::string Core::Entity::Actor::getName() const
 /*! \return true if the actor is of type player */
 bool Core::Entity::Actor::isPlayer() const
 {
-   return m_type == ActorType::Player;
+   return m_objKind == ObjKind::Player;
 }
 
 /*! \return true if the actor is of type mob */
 bool Core::Entity::Actor::isMob() const
 {
-   return m_type == ActorType::BattleNpc;
+   return m_objKind == ObjKind::BattleNpc;
 }
 
 /*! \return list of actors currently in range */
@@ -207,7 +209,6 @@ void Core::Entity::Actor::setInvincibilityType( Common::InvincibilityType type )
 {
    m_invincibilityType = type;
 }
-
 
 /*! \return current status of the actor */
 Core::Entity::Actor::ActorStatus Core::Entity::Actor::getStatus() const
@@ -448,7 +449,7 @@ Core::Entity::ActorPtr Core::Entity::Actor::getClosestActor()
    // arbitrary high number
    float minDistance = 10000;
 
-   for( auto pCurAct : m_inRangeActors )
+   for( const auto& pCurAct : m_inRangeActors )
    {
       float distance = Math::Util::distance( getPos().x,
                                              getPos().y,
@@ -490,11 +491,11 @@ void Core::Entity::Actor::sendToInRangeSet( Network::Packets::GamePacketPtr pPac
    if( m_inRangePlayers.empty() )
       return;
 
-   for( auto pCurAct : m_inRangePlayers )
+   for( const auto &pCurAct : m_inRangePlayers )
    {
       assert( pCurAct );
-      pPacket->setValAt<uint32_t>( 0x04, m_id );
-      pPacket->setValAt<uint32_t>( 0x08, pCurAct->m_id );
+      pPacket->setValAt< uint32_t >( 0x04, m_id );
+      pPacket->setValAt< uint32_t >( 0x08, pCurAct->m_id );
       // it might be that the player DC'd in which case the session would be invalid
       pCurAct->queuePacket( pPacket );
    }
@@ -623,10 +624,10 @@ void Core::Entity::Actor::autoAttack( ActorPtr pTarget )
       m_lastAttack = tick;
       srand( static_cast< uint32_t >( tick ) );
 
-      uint32_t damage = 10 + rand() % 12;
-      uint32_t variation = 0 + rand() % 4;
+      uint16_t damage = static_cast< uint16_t >( 10 + rand() % 12 );
+      uint32_t variation = static_cast< uint32_t >( 0 + rand() % 4 );
 
-      GamePacketNew< FFXIVIpcEffect, ServerZoneIpcType > effectPacket( getId() );
+      ZoneChannelPacket< FFXIVIpcEffect > effectPacket( getId() );
       effectPacket.data().targetId = pTarget->getId();
       effectPacket.data().actionAnimationId = 0x366;
       effectPacket.data().unknown_2 = variation;
@@ -655,7 +656,8 @@ ChaiScript Skill Handler.
 \param GamePacketPtr to send
 \param bool should be send to self?
 */
-void Core::Entity::Actor::handleScriptSkill( uint32_t type, uint32_t actionId, uint64_t param1, uint64_t param2, Entity::Actor& pTarget )
+void Core::Entity::Actor::handleScriptSkill( uint32_t type, uint16_t actionId, uint64_t param1,
+                                             uint64_t param2, Entity::Actor& pTarget )
 {
 
    if ( isPlayer() )
@@ -669,7 +671,7 @@ void Core::Entity::Actor::handleScriptSkill( uint32_t type, uint32_t actionId, u
    // Todo: Effect packet generator. 90% of this is basically setting params and it's basically unreadable.
    // Prepare packet. This is seemingly common for all packets in the action handler.
 
-   GamePacketNew< FFXIVIpcEffect, ServerZoneIpcType > effectPacket( getId() );
+   ZoneChannelPacket< FFXIVIpcEffect > effectPacket( getId() );
    effectPacket.data().targetId = pTarget.getId();
    effectPacket.data().actionAnimationId = actionId;
    effectPacket.data().unknown_62 = 1; // Affects displaying action name next to number in floating text
@@ -707,14 +709,16 @@ void Core::Entity::Actor::handleScriptSkill( uint32_t type, uint32_t actionId, u
       else
       {
 
-         std::set< ActorPtr > actorsCollided = ActionCollision::getActorsHitFromAction( pTarget.getPos(), getInRangeActors( true ), actionInfoPtr, TargetFilter::Enemies );
+         auto actorsCollided = ActionCollision::getActorsHitFromAction( pTarget.getPos(), getInRangeActors( true ),
+                                                                        actionInfoPtr, TargetFilter::Enemies );
 
-         for ( auto pHitActor : actorsCollided )
+         for ( const auto& pHitActor : actorsCollided )
          {
             effectPacket.data().targetId = pHitActor->getId();
             effectPacket.data().effectTarget = pHitActor->getId();
 
-            sendToInRangeSet( effectPacket, true ); // todo: send to range of what? ourselves? when mob script hits this is going to be lacking
+            // todo: send to range of what? ourselves? when mob script hits this is going to be lacking
+            sendToInRangeSet( effectPacket, true );
 
             pHitActor->takeDamage( static_cast< uint32_t >( param1 ) );
 
@@ -738,7 +742,7 @@ void Core::Entity::Actor::handleScriptSkill( uint32_t type, uint32_t actionId, u
 
    case ActionEffectType::Heal:
    {
-      uint32_t calculatedHeal = Data::CalcBattle::calculateHealValue( getAsPlayer(), static_cast< uint32_t >( param1 ) );
+      uint32_t calculatedHeal = Math::CalcBattle::calculateHealValue( getAsPlayer(), static_cast< uint32_t >( param1 ) );
 
       effectPacket.data().effects[0].value = calculatedHeal;
       effectPacket.data().effects[0].effectType = ActionEffectType::Heal;
@@ -754,9 +758,11 @@ void Core::Entity::Actor::handleScriptSkill( uint32_t type, uint32_t actionId, u
       }
       else
       {
-         // todo: get proper packets: the following was just kind of thrown together from what we know. atm buggy (packets look "delayed" from client)
+         // todo: get proper packets: the following was just kind of thrown together from what we know.
+         // atm buggy (packets look "delayed" from client)
 
-         std::set< ActorPtr > actorsCollided = ActionCollision::getActorsHitFromAction( pTarget.getPos(), getInRangeActors( true ), actionInfoPtr, TargetFilter::Allies );
+         auto actorsCollided = ActionCollision::getActorsHitFromAction( pTarget.getPos(), getInRangeActors( true ),
+                                                                        actionInfoPtr, TargetFilter::Allies );
 
          for ( auto pHitActor : actorsCollided )
          {

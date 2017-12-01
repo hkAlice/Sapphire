@@ -26,7 +26,7 @@ Core::Action::ActionCast::ActionCast()
    m_handleActionType = Common::HandleActionType::Event;
 }
 
-Core::Action::ActionCast::ActionCast( Entity::ActorPtr pActor, Entity::ActorPtr pTarget, uint32_t actionId )
+Core::Action::ActionCast::ActionCast( Entity::ActorPtr pActor, Entity::ActorPtr pTarget, uint16_t actionId )
 {
    m_startTime = 0;
    m_id = actionId;
@@ -37,10 +37,7 @@ Core::Action::ActionCast::ActionCast( Entity::ActorPtr pActor, Entity::ActorPtr 
    m_bInterrupt = false;
 }
 
-Core::Action::ActionCast::~ActionCast()
-{
-
-}
+Core::Action::ActionCast::~ActionCast() = default;
 
 void Core::Action::ActionCast::onStart()
 {
@@ -50,7 +47,7 @@ void Core::Action::ActionCast::onStart()
    m_pSource->getAsPlayer()->sendDebug( "onStart()" );
    m_startTime = Util::getTimeMs();
 
-   GamePacketNew< FFXIVIpcActorCast, ServerZoneIpcType > castPacket( m_pSource->getId() );
+   ZoneChannelPacket< FFXIVIpcActorCast > castPacket( m_pSource->getId() );
 
    castPacket.data().action_id = m_id;
    castPacket.data().skillType = Common::SkillType::Normal;

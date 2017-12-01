@@ -219,7 +219,7 @@ public:
    /*! get the current system hand model */
    uint64_t getModelSystemWeapon() const;
    /*! return a const pointer to the model array */
-   const uint32_t * getModelArray() const;
+   const uint32_t* getModelArray() const;
    /*! return the equipment model in a specified equipment slot */
    uint32_t getModelForSlot( Inventory::EquipSlot slot );
    /*! set the equipment model in a specified equipment slot */
@@ -258,13 +258,13 @@ public:
    /*! change class or job to given class / job */
    void setClassJob( Core::Common::ClassJob classJob );
    /*! returns a pointer to the class array */
-   uint16_t * getClassArray();
+   uint16_t* getClassArray();
    /*! returns a const pointer to the class array */
-   const uint16_t * getClassArray() const;
+   const uint16_t* getClassArray() const;
    /*! returns a pointer to the exp array */
-   uint32_t * getExpArray();
+   uint32_t* getExpArray();
    /*! returns a const pointer to the exp array */
-   const uint32_t * getExpArray() const;
+   const uint32_t* getExpArray() const;
 
    // Base Look / Stats / Params
    //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -287,7 +287,7 @@ public:
    /*! return the grand company */
    uint8_t getGc() const;
    /*! return the grand company rank */
-   const uint8_t * getGcRankArray() const;
+   const uint8_t* getGcRankArray() const;
    /*! set look at index */
    void setLookAt( uint8_t index, uint8_t value );
    /*! set the voice Id */
@@ -297,7 +297,7 @@ public:
    /*! set the grand company rank */
    void setGcRankAt( uint8_t index, uint8_t rank );
    /*! return a const pointer to the look array */
-   const uint8_t * getLookArray() const;
+   const uint8_t* getLookArray() const;
    /*! returns true if the player is currently in combat */
    bool isInCombat() const;
    /*! sets players combat state */
@@ -333,7 +333,7 @@ public:
    /*! prepares zoning / fades out the screen */
    void prepareZoning( uint16_t targetZone, bool fadeOut, uint8_t fadoutTime = 0, uint16_t animation = 0 );
    /*! get player's title list (available titles) */
-   uint8_t * getTitleList();
+   uint8_t* getTitleList();
    /*! get player's active title */
    uint16_t getTitle() const;
    /*! add title to player title list */
@@ -364,7 +364,7 @@ public:
    /*! return a const pointer to the aetheryte unlock bitmask array */
    int8_t getAetheryteMaskAt( uint8_t index ) const;
    /*! return a pointer to the aetheryte unlock bitmask array */
-   uint8_t * getAetheryteArray();
+   uint8_t* getAetheryteArray();
    /*! set homepoint */
    void setHomepoint( uint8_t aetheryteId );
    /*! get homepoint */
@@ -372,13 +372,13 @@ public:
    /*! discover subarea subid fo map map_id, also send udpate packet */
    void discover( int16_t map_id, int16_t sub_id );
    /*! return a pointer to the discovery bitmask array */
-   uint8_t * getDiscoveryBitmask();
+   uint8_t* getDiscoveryBitmask();
    /*! helper/debug function to reset all discovered areas */
    void resetDiscovery();
    /*! get a pointer to the howto bitmask array */
-   uint8_t * getHowToArray();
+   uint8_t* getHowToArray();
    /*! get a const pointer to the howto bitmask array */
-   const uint8_t * getHowToArray() const;
+   const uint8_t* getHowToArray() const;
    /*! update bitmask for how-to's seen */
    void updateHowtosSeen( uint32_t howToId );
    /*! learn an action / update the unlock bitmask. */
@@ -388,9 +388,9 @@ public:
    /*! check if an action is already unlocked in the bitmask. */
    bool isActionLearned( uint8_t actionId ) const;
    /*! return a const pointer to the unlock bitmask array */
-   const uint8_t * getUnlockBitmask() const;
+   const uint8_t* getUnlockBitmask() const;
    /*! return a const pointer to the orchestrion bitmask array */
-   const uint8_t * getOrchestrionBitmask() const;
+   const uint8_t* getOrchestrionBitmask() const;
 
 
    // Spawn handling
@@ -526,7 +526,6 @@ public:
 
    void setEorzeaTimeOffset( uint64_t timestamp );
 
-
    // Database
    void updateDbAllQuests() const;
    void deleteQuest( uint16_t questId ) const;
@@ -637,6 +636,8 @@ private:
 
    // content finder info
    uint32_t m_cfPenaltyUntil; // unix time
+
+   uint8_t m_mount;
 };
 
 }

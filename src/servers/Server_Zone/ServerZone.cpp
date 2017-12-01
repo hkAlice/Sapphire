@@ -44,7 +44,8 @@ Core::Db::DbWorkerPool< Core::Db::CharaDbConnection > g_charaDb;
 
 Core::ServerZone::ServerZone( const std::string& configPath )
    : m_configPath( configPath ),
-     m_bRunning( true )
+     m_bRunning( true ),
+     m_lastDBPingTime( 0 )
 {
    m_pConfig = XMLConfigPtr( new XMLConfig );
 }
@@ -127,6 +128,10 @@ bool Core::ServerZone::loadSettings( int32_t argc, char* argv[] )
          else if( arg == "exdpath" || arg == "datapath" )
          {
             m_pConfig->setValue< std::string >( "Settings.General.DataPath", val );
+         }
+         else if( arg == "s" || arg == "scriptpath" )
+         {
+            m_pConfig->setValue< std::string >( "Settings.General.ScriptPath", val );
          }
          else if( arg == "h" || arg == "dbhost" )
          {
@@ -270,6 +275,12 @@ void Core::ServerZone::mainLoop()
                session->update();
 
          }
+      }
+
+      if( currTime - m_lastDBPingTime > 3 )
+      {
+         g_charaDb.keepAlive();
+         m_lastDBPingTime = currTime;
       }
 
 

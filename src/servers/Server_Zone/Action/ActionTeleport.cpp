@@ -45,7 +45,7 @@ void Core::Action::ActionTeleport::onStart()
 
    m_startTime = Util::getTimeMs();
 
-   GamePacketNew< FFXIVIpcActorCast, ServerZoneIpcType > castPacket( m_pSource->getId() );
+   ZoneChannelPacket< FFXIVIpcActorCast > castPacket( m_pSource->getId() );
 
    castPacket.data().action_id = 5;
    castPacket.data().unknown = 1;
@@ -83,14 +83,14 @@ void Core::Action::ActionTeleport::onFinish()
 
    pPlayer->setZoningType( Common::ZoneingType::Teleport );
 
-   GamePacketNew< FFXIVIpcEffect, ServerZoneIpcType > effectPacket( pPlayer->getId() );
+   ZoneChannelPacket< FFXIVIpcEffect > effectPacket( pPlayer->getId() );
    effectPacket.data().targetId = pPlayer->getId();
    effectPacket.data().actionAnimationId = 5;
    //effectPacket.data().unknown_3 = 1;
    effectPacket.data().actionTextId = 5;
    effectPacket.data().unknown_5 = 1;
    effectPacket.data().numEffects = 1;
-   effectPacket.data().rotation = static_cast< uint16_t >( 0x8000 * ((pPlayer->getRotation() + 3.1415926)) / 3.1415926 );
+   effectPacket.data().rotation = static_cast< uint16_t >( 0x8000 * ( (pPlayer->getRotation() + 3.1415926) ) / 3.1415926 );
    effectPacket.data().effectTarget = pPlayer->getId();
    pPlayer->sendToInRangeSet( effectPacket, true );
 
@@ -108,7 +108,7 @@ void Core::Action::ActionTeleport::onInterrupt()
    m_pSource->getAsPlayer()->sendStateFlags();
 
    auto control = ActorControlPacket142( m_pSource->getId(), ActorControlType::CastInterrupt,
-                                          0x219, 0x04, m_id, 0 );
+                                         0x219, 0x04, m_id, 0 );
    m_pSource->sendToInRangeSet( control, true );
 
 }
