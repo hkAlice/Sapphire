@@ -1,22 +1,22 @@
-#include <src/servers/Server_Common/Network/PacketDef/Zone/ServerZoneDef.h>
-#include <src/servers/Server_Common/Common.h>
-#include <src/servers/Server_Common/Exd/ExdData.h>
-#include <src/servers/Server_Common/Logging/Logger.h>
+#include <Server_Common/Network/PacketDef/Zone/ServerZoneDef.h>
+#include <Server_Common/Common.h>
+#include <Server_Common/Exd/ExdData.h>
+#include <Server_Common/Logging/Logger.h>
 
 #include "Inventory.h"
 
-#include "src/servers/Server_Zone/Actor/Player.h"
+#include "Actor/Player.h"
 
 #include "ItemContainer.h"
 #include "Item.h"
 
-#include "src/servers/Server_Zone/Network/PacketWrappers/ServerNoticePacket.h"
+#include "Network/PacketWrappers/ServerNoticePacket.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/clamp.hpp>
 
-#include "src/servers/Server_Zone/Forwards.h"
-#include "src/servers/Server_Zone/Network/PacketWrappers/ActorControlPacket143.h"
+#include "../Forwards.h"
+#include "Network/PacketWrappers/ActorControlPacket143.h"
 
 #include <Server_Common/Database/DatabaseDef.h>
 
@@ -28,7 +28,7 @@ using namespace Core::Network;
 using namespace Core::Network::Packets;
 using namespace Core::Network::Packets::Server;
 
-Core::Inventory::Inventory( Core::Entity::PlayerPtr pOwner )
+Core::Inventory::Inventory( Core::Entity::Player* pOwner )
 {
 
    m_pOwner = pOwner;
@@ -439,27 +439,27 @@ bool Core::Inventory::removeCrystal( CrystalType type, uint32_t amount )
    return true;
 }
 
-bool Core::Inventory::isOneHandedWeapon( ItemCategory weaponCategory )
+bool Core::Inventory::isOneHandedWeapon( ItemUICategory weaponCategory )
 {
    switch ( weaponCategory )
    {
-      case ItemCategory::AlcPri:
-      case ItemCategory::ArmPri:
-      case ItemCategory::BotPri:
-      case ItemCategory::ClnPri:
-      case ItemCategory::CnjWep:
-      case ItemCategory::CrpPri:
-      case ItemCategory::FshPri:
-      case ItemCategory::GlaWep:
-      case ItemCategory::GldPri: // Goldsmith
-      case ItemCategory::LtwPri:
-      case ItemCategory::MinPri:
-      case ItemCategory::ThmWep:
-      case ItemCategory::WvrPri:
-      case ItemCategory::BlmPri: // Blacksmith
-         return true;
-      default:
-         return false;
+   case ItemUICategory::AlchemistsPrimaryTool:
+   case ItemUICategory::ArmorersPrimaryTool:
+   case ItemUICategory::BotanistsPrimaryTool:
+   case ItemUICategory::CulinariansPrimaryTool:
+   case ItemUICategory::OnehandedConjurersArm:
+   case ItemUICategory::CarpentersPrimaryTool:
+   case ItemUICategory::FishersPrimaryTool:
+   case ItemUICategory::GladiatorsArm:
+   case ItemUICategory::GoldsmithsPrimaryTool:
+   case ItemUICategory::LeatherworkersPrimaryTool:
+   case ItemUICategory::MinersPrimaryTool:
+   case ItemUICategory::OnehandedThaumaturgesArm:
+   case ItemUICategory::WeaversPrimaryTool:
+   case ItemUICategory::BlacksmithsPrimaryTool:
+      return true;
+   default:
+      return false;
    }
 }
 
@@ -475,7 +475,8 @@ int16_t Core::Inventory::addItem( uint16_t inventoryId, int8_t slotId, uint32_t 
 
    auto itemInfo = g_exdData.getItemInfo( catalogId );
 
-   if( !itemInfo )
+   // if item data doesn't exist or it's a blank field
+   if( !itemInfo || itemInfo->item_level == 0 )
    {
       return -1;
    }
@@ -883,7 +884,7 @@ uint16_t Core::Inventory::calculateEquippedGearItemLevel()
       it++;
    }
 
-   return boost::algorithm::clamp( iLvlResult / 12, 0, 9999 );
+   return boost::algorithm::clamp( iLvlResult / 13, 0, 9999 );
 }
 
 

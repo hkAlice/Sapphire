@@ -1,12 +1,12 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
-#include "src/servers/Server_Zone/Forwards.h"
+#include "Forwards.h"
 
-#include <src/servers/Server_Common/Common.h>
+#include <Server_Common/Common.h>
 
 #include "Actor.h"
-#include "src/servers/Server_Zone/Inventory/Inventory.h"
+#include "Inventory/Inventory.h"
 #include <map>
 #include <queue>
 
@@ -242,7 +242,7 @@ public:
    /*! returns the level of the currently active class / job */
    uint8_t getLevel() const override;
    /*! returns the level of the provided class / job */
-   uint8_t getLevelForClass( Core::Common::ClassJob pClass ) const;
+   uint8_t getLevelForClass( Common::ClassJob pClass ) const;
    /*! returns the exp of the currently active class / job */
    uint32_t getExp() const;
    /*! sets the exp of the currently active class / job */
@@ -254,9 +254,9 @@ public:
    /*! set level on the currently active class / job to given level */
    void setLevel( uint8_t level );
    /*! set level on the provided class / job to given level */
-   void setLevelForClass( uint8_t level, Core::Common::ClassJob classjob );
+   void setLevelForClass( uint8_t level, Common::ClassJob classjob );
    /*! change class or job to given class / job */
-   void setClassJob( Core::Common::ClassJob classJob );
+   void setClassJob( Common::ClassJob classJob );
    /*! returns a pointer to the class array */
    uint16_t* getClassArray();
    /*! returns a const pointer to the class array */
@@ -391,6 +391,8 @@ public:
    const uint8_t* getUnlockBitmask() const;
    /*! return a const pointer to the orchestrion bitmask array */
    const uint8_t* getOrchestrionBitmask() const;
+   /*! return a const pointer to the mount guide bitmask array */
+   const uint8_t* getMountGuideBitmask() const;
 
 
    // Spawn handling
@@ -578,7 +580,7 @@ private:
    uint8_t m_titleList[48];
    uint8_t m_howTo[33];
    uint8_t m_minions[33];
-   uint8_t m_mounts[13];
+   uint8_t m_mountGuide[13];
    uint8_t m_homePoint;
    uint8_t m_startTown;
    uint16_t m_townWarpFstFlags;

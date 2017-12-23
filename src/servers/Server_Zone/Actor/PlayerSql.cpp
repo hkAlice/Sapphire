@@ -1,35 +1,32 @@
-#include <src/servers/Server_Common/Common.h>
-#include <src/servers/Server_Common/Network/GamePacket.h>
-#include <src/servers/Server_Common/Util/Util.h>
-#include <src/servers/Server_Common/Util/UtilMath.h>
-#include <src/servers/Server_Common/Config/XMLConfig.h>
-#include <src/servers/Server_Common/Logging/Logger.h>
-#include <src/servers/Server_Common/Exd/ExdData.h>
-#include <src/servers/Server_Common/Network/PacketContainer.h>
+#include <Server_Common/Common.h>
+#include <Server_Common/Network/GamePacket.h>
+#include <Server_Common/Util/Util.h>
+#include <Server_Common/Util/UtilMath.h>
+#include <Server_Common/Config/XMLConfig.h>
+#include <Server_Common/Logging/Logger.h>
+#include <Server_Common/Exd/ExdData.h>
+#include <Server_Common/Network/PacketContainer.h>
+#include <Server_Common/Common.h>
+#include <Server_Common/Database/DatabaseDef.h>
 
 #include <set>
 #include <stdio.h>
 
 #include <time.h>
 
-
-#include <servers/Server_Common/Common.h>
-
 #include "Player.h"
 
-#include "src/servers/Server_Zone/Zone/ZoneMgr.h"
-#include "src/servers/Server_Zone/Zone/Zone.h"
+#include "Zone/ZoneMgr.h"
+#include "Zone/Zone.h"
 
-#include "src/servers/Server_Zone/ServerZone.h"
+#include "ServerZone.h"
 
-#include "src/servers/Server_Zone/Forwards.h"
+#include "Forwards.h"
 
-#include "src/servers/Server_Zone/Network/GameConnection.h"
-#include "src/servers/Server_Zone/Network/PacketWrappers/InitUIPacket.h"
-#include "src/servers/Server_Zone/StatusEffect/StatusEffectContainer.h"
-#include "src/servers/Server_Zone/Inventory/Inventory.h"
+#include "Network/GameConnection.h"
+#include "Network/PacketWrappers/InitUIPacket.h"
+#include "Inventory/Inventory.h"
 
-#include <Server_Common/Database/DatabaseDef.h>
 
 extern Core::Logger g_log;
 extern Core::ServerZone g_serverZone;
@@ -42,11 +39,11 @@ using namespace Core::Network::Packets;
 using namespace Core::Network::Packets::Server;
 
 // load player from the db
-bool Core::Entity::Player::load( uint32_t charId, Core::SessionPtr pSession )
+bool Core::Entity::Player::load( uint32_t charId, SessionPtr pSession )
 {
    const std::string char_id_str = std::to_string( charId );
 
-   auto stmt = g_charaDb.getPreparedStatement( Core::Db::CharaDbStatements::CHARA_SEL );
+   auto stmt = g_charaDb.getPreparedStatement( Db::CharaDbStatements::CHARA_SEL );
 
    stmt->setUInt( 1, charId );
    auto res = g_charaDb.query( stmt );
@@ -152,6 +149,12 @@ bool Core::Entity::Player::load( uint32_t charId, Core::SessionPtr pSession )
 
    auto titleList = res->getBlobVector( "TitleList" );
    memcpy( reinterpret_cast< char* >( m_titleList ), titleList.data(), titleList.size() );
+
+   auto mountGuide = res->getBlobVector( "Mounts" );
+   memcpy( reinterpret_cast< char* >( m_mountGuide ), mountGuide.data(), mountGuide.size() );
+
+   auto orchestrion = res->getBlobVector( "Orchestrion" );
+   memcpy( reinterpret_cast< char* >( m_orchestrion ), orchestrion.data(), orchestrion.size() );
    
    auto gcRank = res->getBlobVector( "GrandCompanyRank" );
    memcpy( reinterpret_cast< char* >( m_gcRank ), gcRank.data(), gcRank.size() );
@@ -172,7 +175,8 @@ bool Core::Entity::Player::load( uint32_t charId, Core::SessionPtr pSession )
    m_lastTickTime = 0;
 
    auto pPlayer = getAsPlayer();
-   m_pInventory = InventoryPtr( new Inventory( pPlayer ) );
+   // TODO: remove Inventory and actually inline it in Player class
+   m_pInventory = InventoryPtr( new Inventory( pPlayer.get() ) );
 
    pPlayer->calculateStats();
 
@@ -205,8 +209,6 @@ bool Core::Entity::Player::load( uint32_t charId, Core::SessionPtr pSession )
 
    initSpawnIdQueue();
 
-   m_pStatusEffectContainer = StatusEffect::StatusEffectContainerPtr( new StatusEffect::StatusEffectContainer( shared_from_this() ) );
-
    if( !m_playerIdToSpawnIdMap.empty() )
       m_playerIdToSpawnIdMap.clear();
 
@@ -216,7 +218,7 @@ bool Core::Entity::Player::load( uint32_t charId, Core::SessionPtr pSession )
 bool Core::Entity::Player::loadActiveQuests()
 {
 
-   auto stmt = g_charaDb.getPreparedStatement( Core::Db::CharaDbStatements::CHARA_QUEST_SEL );
+   auto stmt = g_charaDb.getPreparedStatement( Db::CharaDbStatements::CHARA_QUEST_SEL );
 
    stmt->setUInt( 1, m_id );
    auto res = g_charaDb.query( stmt );
@@ -253,7 +255,7 @@ bool Core::Entity::Player::loadClassData()
 {
 
    // ClassIdx, Exp, Lvl
-   auto stmt = g_charaDb.getPreparedStatement( Core::Db::CharaDbStatements::CHARA_CLASS_SEL );
+   auto stmt = g_charaDb.getPreparedStatement( Db::CharaDbStatements::CHARA_CLASS_SEL );
    stmt->setUInt( 1, m_id );
    auto res = g_charaDb.query( stmt );
 
@@ -272,7 +274,7 @@ bool Core::Entity::Player::loadClassData()
 
 bool Core::Entity::Player::loadSearchInfo()
 {
-   auto stmt = g_charaDb.getPreparedStatement( Core::Db::CharaDbStatements::CHARA_SEARCHINFO_SEL );
+   auto stmt = g_charaDb.getPreparedStatement( Db::CharaDbStatements::CHARA_SEARCHINFO_SEL );
    stmt->setUInt( 1, m_id );
    auto res = g_charaDb.query( stmt );
 
@@ -296,11 +298,11 @@ void Core::Entity::Player::updateSql()
            "TerritoryType 18, TerritoryId 19, PosX 20, PosY 21, PosZ 22, PosR 23, "
            "OTerritoryType 24, OTerritoryId 25, OPosX 26, OPosY 27, OPosZ 28, OPosR 29, "
            "Class 30, Status 31, TotalPlayTime 32, HomePoint 33, FavoritePoint 34, RestPoint 35, "
-           "ActiveTitle 36, TitleList 37, Achievement 38, Aetheryte 39, HowTo 40, Minions 41, Mounts 42, "
-           "EquippedMannequin 43, ConfigFlags 44, QuestCompleteFlags 45, OpeningSequence 46, "
-           "QuestTracking 47, GrandCompany 48, GrandCompanyRank 49, Discovery 50, GMRank 51, Unlocks 52, "
-           "CFPenaltyUntil 53"*/
-   auto stmt = g_charaDb.getPreparedStatement( Core::Db::CharaDbStatements::CHARA_UP );
+           "ActiveTitle 36, TitleList 37, Achievement 38, Aetheryte 39, HowTo 40, Minions 41, Mounts 42, Orchestrion 43, "
+           "EquippedMannequin 44, ConfigFlags 45, QuestCompleteFlags 46, OpeningSequence 47, "
+           "QuestTracking 48, GrandCompany 49, GrandCompanyRank 50, Discovery 51, GMRank 52, Unlocks 53, "
+           "CFPenaltyUntil 54"*/
+   auto stmt = g_charaDb.getPreparedStatement( Db::CharaDbStatements::CHARA_UP );
 
    stmt->setInt( 1, getHp() );
    stmt->setInt( 2, getMp() );
@@ -370,40 +372,44 @@ void Core::Entity::Player::updateSql()
    memcpy( minionsVec.data(), m_minions, sizeof( m_minions ) );
    stmt->setBinary( 41, minionsVec );
 
-   std::vector< uint8_t > mountsVec( sizeof( m_mounts ) );
-   memcpy( mountsVec.data(), m_mounts, sizeof( m_mounts ) );
+   std::vector< uint8_t > mountsVec( sizeof( m_mountGuide ) );
+   memcpy( mountsVec.data(), m_mountGuide, sizeof( m_mountGuide ) );
    stmt->setBinary( 42, mountsVec );
 
-   stmt->setInt( 43, 0 ); // EquippedMannequin
+   std::vector< uint8_t > orchestrionVec( sizeof( m_orchestrion ) );
+   memcpy( orchestrionVec.data(), m_orchestrion, sizeof( m_orchestrion ) );
+   stmt->setBinary( 42, mountsVec );
 
-   stmt->setInt( 44, 0 ); // DisplayFlags
+   stmt->setInt( 44, 0 ); // EquippedMannequin
+
+   stmt->setInt( 45, 0 ); // DisplayFlags
    std::vector< uint8_t > questCompleteVec( sizeof( m_questCompleteFlags ) );
    memcpy( questCompleteVec.data(), m_questCompleteFlags, sizeof( m_questCompleteFlags ) );
-   stmt->setBinary( 45, questCompleteVec );
+   stmt->setBinary( 46, questCompleteVec );
 
-   stmt->setInt( 46, m_openingSequence );
+   stmt->setInt( 47, m_openingSequence );
 
    std::vector< uint8_t > questTrackerVec( sizeof( m_questTracking ) );
    memcpy( questTrackerVec.data(), m_questTracking, sizeof( m_questTracking ) );
-   stmt->setBinary( 47, questTrackerVec );
+   stmt->setBinary( 48, questTrackerVec );
 
-   stmt->setInt( 48, m_gc ); // DisplayFlags
+   stmt->setInt( 49, m_gc ); // DisplayFlags
 
-   stmt->setBinary( 49, { m_gcRank[0], m_gcRank[1], m_gcRank[2] } );
+   stmt->setBinary( 50, { m_gcRank[0], m_gcRank[1], m_gcRank[2] } );
 
    std::vector< uint8_t > discoveryVec( sizeof( m_discovery ) );
    memcpy( discoveryVec.data(), m_discovery, sizeof( m_discovery ) );
-   stmt->setBinary( 50, discoveryVec );
+   stmt->setBinary( 51, discoveryVec );
 
-   stmt->setInt( 51, m_gmRank );
+   stmt->setInt( 52, m_gmRank );
 
    std::vector< uint8_t > unlockVec( sizeof( m_unlocks ) );
    memcpy( unlockVec.data(), m_unlocks, sizeof( m_unlocks ) );
-   stmt->setBinary( 52, unlockVec );
+   stmt->setBinary( 53, unlockVec );
 
-   stmt->setInt( 53, m_cfPenaltyUntil );
+   stmt->setInt( 54, m_cfPenaltyUntil );
 
-   stmt->setInt( 54, m_id );
+   stmt->setInt( 55, m_id );
 
    g_charaDb.execute( stmt );
 
@@ -416,8 +422,6 @@ void Core::Entity::Player::updateSql()
    ////// Class
    updateDbClass();
 
-   memset( m_orchestrion, 0, sizeof( m_orchestrion ) );
-
 }
 
 void Core::Entity::Player::updateDbClass() const
@@ -425,7 +429,7 @@ void Core::Entity::Player::updateDbClass() const
    uint8_t classJobIndex = g_exdData.m_classJobInfoMap[static_cast< uint8_t >( getClass() )].exp_idx;
 
    //Exp = ?, Lvl = ? WHERE CharacterId = ? AND ClassIdx = ?
-   auto stmtS = g_charaDb.getPreparedStatement( Core::Db::CHARA_CLASS_UP );
+   auto stmtS = g_charaDb.getPreparedStatement( Db::CHARA_CLASS_UP );
    stmtS->setInt( 1, getExp() );
    stmtS->setInt( 2, getLevel() );
    stmtS->setInt( 3, m_id );
@@ -435,17 +439,17 @@ void Core::Entity::Player::updateDbClass() const
 
 void Core::Entity::Player::updateDbSearchInfo() const
 {
-   auto stmtS = g_charaDb.getPreparedStatement( Core::Db::CHARA_SEARCHINFO_UP_SELECTCLASS );
+   auto stmtS = g_charaDb.getPreparedStatement( Db::CHARA_SEARCHINFO_UP_SELECTCLASS );
    stmtS->setInt( 1, m_searchSelectClass );
    stmtS->setInt( 2, m_id );
    g_charaDb.execute( stmtS );
 
-   auto stmtS1 = g_charaDb.getPreparedStatement( Core::Db::CHARA_SEARCHINFO_UP_SELECTREGION );
+   auto stmtS1 = g_charaDb.getPreparedStatement( Db::CHARA_SEARCHINFO_UP_SELECTREGION );
    stmtS1->setInt( 1, m_searchSelectRegion );
    stmtS1->setInt( 2, m_id );
    g_charaDb.execute( stmtS1 );
 
-   auto stmtS2 = g_charaDb.getPreparedStatement( Core::Db::CHARA_SEARCHINFO_UP_SELECTREGION );
+   auto stmtS2 = g_charaDb.getPreparedStatement( Db::CHARA_SEARCHINFO_UP_SELECTREGION );
    stmtS2->setString( 1, string( m_searchMessage != nullptr ? m_searchMessage : "" ) );
    stmtS2->setInt( 2, m_id );
    g_charaDb.execute( stmtS2 );
@@ -459,7 +463,7 @@ void Core::Entity::Player::updateDbAllQuests() const
       if( !m_activeQuests[i] )
          continue;
 
-      auto stmtS3 = g_charaDb.getPreparedStatement( Core::Db::CHARA_QUEST_UP );
+      auto stmtS3 = g_charaDb.getPreparedStatement( Db::CHARA_QUEST_UP );
       stmtS3->setInt( 1, m_activeQuests[i]->c.sequence );
       stmtS3->setInt( 2, m_activeQuests[i]->c.flags );
       stmtS3->setInt( 3, m_activeQuests[i]->c.UI8A );
@@ -478,7 +482,7 @@ void Core::Entity::Player::updateDbAllQuests() const
 
 void Core::Entity::Player::deleteQuest( uint16_t questId ) const
 {
-   auto stmt = g_charaDb.getPreparedStatement( Core::Db::CHARA_QUEST_DEL );
+   auto stmt = g_charaDb.getPreparedStatement( Db::CHARA_QUEST_DEL );
    stmt->setInt( 1, m_id );
    stmt->setInt( 2, questId );
    g_charaDb.execute( stmt );
@@ -486,7 +490,7 @@ void Core::Entity::Player::deleteQuest( uint16_t questId ) const
 
 void Core::Entity::Player::insertQuest( uint16_t questId, uint8_t index, uint8_t seq ) const
 {
-   auto stmt = g_charaDb.getPreparedStatement( Core::Db::CHARA_QUEST_INS );
+   auto stmt = g_charaDb.getPreparedStatement( Db::CHARA_QUEST_INS );
    stmt->setInt( 1, m_id );
    stmt->setInt( 2, index );
    stmt->setInt( 3, questId );
