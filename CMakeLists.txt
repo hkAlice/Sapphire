@@ -8,13 +8,17 @@ set( EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin )
 set( LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin )
 set( EXECUTABLE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin )
 
-set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake )
+set( CMAKE_MODULE_PATH
+       ${CMAKE_MODULE_PATH}
+       ${CMAKE_SOURCE_DIR}/cmake )
 
-##########################################################################
-# Dependencies and compiler settings
+######################################
+# Dependencies and compiler settings #
+######################################
 include( "cmake/mysql.cmake" )
 include( "cmake/compiler.cmake" )
 include( "cmake/cotire.cmake" )
+
 ##############################
 #             Git            #
 ##############################
@@ -36,8 +40,11 @@ add_subdirectory( "deps/datReader" )
 add_subdirectory( "deps/mysqlConnector" )
 add_subdirectory( "src/common" )
 
-add_subdirectory( "src/servers" )
-#add_subdirectory( "src/dbm" )
+add_subdirectory( "src/api" )
+add_subdirectory( "src/lobby" )
+add_subdirectory( "src/world" )
+add_subdirectory( "src/dbm" )
+add_subdirectory( "src/scripts" )
 
 add_subdirectory( "src/tools/exd_common_gen" )
 add_subdirectory( "src/tools/exd_struct_gen" )

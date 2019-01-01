@@ -16,37 +16,41 @@
 #include <streambuf>
 #include <regex>
 
+Sapphire::Data::ExdDataGenerated g_exdData;
 
-Core::Logger g_log;
-Core::Data::ExdDataGenerated g_exdData;
+using namespace Sapphire;
 
-
-const std::string datLocation( "/opt/sapphire_3_15_0/bin/sqpack" );
-//const std::string datLocation( "C:\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv" );
+//const std::string datLocation( "/opt/sapphire_3_15_0/bin/sqpack" );
+const std::string datLocation( "C:\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack" );
 
 
 int main()
 {
 
-  g_log.init();
+  Logger::init( "struct_test" );
 
-  g_log.info( "Setting up EXD data" );
+  Logger::info( "Setting up EXD data" );
   if( !g_exdData.init( datLocation ) )
   {
-    g_log.fatal( "Error setting up EXD data " );
+    Logger::fatal( "Error setting up EXD data " );
     return 0;
   }
 
 
-  g_log.info( "getting id list " );
-  auto idList = g_exdData.getTerritoryTypeIdList();
+  //Logger::info( "getting id list " );
+  //auto idList = g_exdData.getGilShopIdList();
 
-  g_log.info( "getting id list done" );
-  for( auto id : idList )
+  //Logger::info( "getting id list done" );
+  //for( auto id : idList )
   {
-    auto teri1 = g_exdData.get< Core::Data::TerritoryType >( id );
+    auto teri1 = g_exdData.get< Sapphire::Data::GilShopItem >( 262440, 0 );
+    Logger::info( "0 -> " + std::to_string( teri1->item ) );
 
-    g_log.info( teri1->name );
+    auto teri2 = g_exdData.get< Sapphire::Data::GilShopItem >( 262440, 1 );
+    Logger::info( "1 -> " + std::to_string( teri2->item ) );
+
+    auto teri3 = g_exdData.get< Sapphire::Data::GilShopItem >( 262440, 2 );
+    Logger::info( "2 -> " + std::to_string( teri3->item ) );
   }
 
   return 0;
