@@ -27,6 +27,7 @@ namespace Sapphire::World
 
     World::SessionPtr getSession( uint32_t id );
     World::SessionPtr getSession( const std::string& playerName );
+    std::map< uint32_t, SessionPtr >& getAllSessions();
 
     size_t getSessionCount() const;
 

@@ -40,6 +40,7 @@
 #include "Manager/EventMgr.h"
 #include "Manager/ItemMgr.h"
 #include "Manager/MarketMgr.h"
+#include "Gui/Client.h"
 
 using namespace Sapphire::World::Manager;
 
@@ -194,6 +195,13 @@ void Sapphire::World::ServerMgr::run( int32_t argc, char* argv[] )
 
   Logger::info( "World server running on " + m_ip + ":" + std::to_string( m_port ) );
 
+  // GUI
+
+  auto pClient = std::make_shared< Sapphire::GUI::Client >( framework() );
+  framework()->set< Sapphire::GUI::Client >( pClient );
+
+  pClient->run();
+
   mainLoop();
 
   for( auto& thread_entry : thread_list )
@@ -201,6 +209,7 @@ void Sapphire::World::ServerMgr::run( int32_t argc, char* argv[] )
     thread_entry.join();
   }
 
+  pClient->stop();
 }
 
 uint16_t Sapphire::World::ServerMgr::getWorldId() const
@@ -228,9 +237,11 @@ void Sapphire::World::ServerMgr::mainLoop()
   auto pTeriMgr = framework()->get< TerritoryMgr >();
   auto pScriptMgr = framework()->get< Scripting::ScriptMgr >();
   auto pDb = framework()->get< Db::DbWorkerPool< Db::ZoneDbConnection > >();
+  auto pClient = framework()->get< Sapphire::GUI::Client >();
 
   while( isRunning() )
   {
+
     std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
 
     auto currTime = Util::getTimeSeconds();
@@ -238,6 +249,9 @@ void Sapphire::World::ServerMgr::mainLoop()
     pTeriMgr->updateTerritoryInstances( static_cast< uint32_t >( currTime ) );
 
     pScriptMgr->update();
+
+    if( pClient->isRunning() )
+      pClient->render();
 
     std::lock_guard< std::mutex > lock( m_sessionMutex );
     for( auto sessionIt : m_sessionMapById )
@@ -366,6 +380,10 @@ void Sapphire::World::ServerMgr::removeSession( const std::string& playerName )
   m_sessionMapByName.erase( playerName );
 }
 
+std::map< uint32_t, Sapphire::World::SessionPtr >& Sapphire::World::ServerMgr::getAllSessions()
+{
+  return m_sessionMapById;
+}
 
 bool Sapphire::World::ServerMgr::isRunning() const
 {

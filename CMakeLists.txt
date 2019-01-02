@@ -54,3 +54,5 @@ add_subdirectory( "src/tools/discovery_parser" )
 add_subdirectory( "src/tools/mob_parse" )
 add_subdirectory( "src/tools/pcb_reader" )
 add_subdirectory( "src/tools/event_object_parser" )
+
+include_directories( "deps/imgui" )

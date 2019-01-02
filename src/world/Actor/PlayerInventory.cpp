@@ -934,6 +934,11 @@ void Sapphire::Entity::Player::insertInventoryItem( Sapphire::Common::InventoryT
 
 }
 
+std::map< uint16_t, Sapphire::ItemContainerPtr >& Sapphire::Entity::Player::getInventoryMap()
+{
+  return m_storageMap;
+}
+
 bool Sapphire::Entity::Player::findFirstItemWithId( uint32_t catalogId,
                                                     Inventory::InventoryContainerPair& location )
 {

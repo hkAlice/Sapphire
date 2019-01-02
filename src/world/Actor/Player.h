@@ -369,6 +369,10 @@ namespace Sapphire::Entity
 
     void insertInventoryItem( Common::InventoryType type, uint16_t slot, const Sapphire::ItemPtr item );
 
+    /*! return full inventory map */
+
+    std::map< uint16_t, Sapphire::ItemContainerPtr >& getInventoryMap();
+
     /*!
     * Collect real item handins from container
     * @param itemIds a vector of each catalog id to collect
