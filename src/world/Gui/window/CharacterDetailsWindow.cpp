@@ -5,6 +5,8 @@
 #include <Network/GamePacketNew.h>
 #include <Network/PacketDef/Zone/ServerZoneDef.h>
 
+#include <Util/UtilMath.h>
+
 #include "Framework.h"
 #include "CharacterDetailsWindow.h"
 #include "../context/MainContext.h"
@@ -17,8 +19,6 @@
 #include "Inventory/Item.h"
 
 using namespace Sapphire::GUI;
-
-static int items[5] = { 400, 851, 789, 991, 340 };
 
 Window::CharacterDetailsWindow::CharacterDetailsWindow( ClientControlPtr pClientControl )
    : m_pClientControl( pClientControl )
@@ -177,13 +177,22 @@ void Window::CharacterDetailsWindow::drawPositionInfo( Sapphire::Entity::PlayerP
   if( ImGui::CollapsingHeader( "Position" ) )
   {
     bool updatePos = false;
+
+    // TODO: 1. sapphire doesn't do pitch/yaw/roll
+    // 2. imgui does not provide sliderangle3, use sliderfloat3
+
+    pPlayer->getRot();
     float v[3] = { pPlayer->getPos().x, pPlayer->getPos().y, pPlayer->getPos().z };
+    float rot = pPlayer->getRot();
     int zoneId = pPlayer->getZoneId();
 
     if( ImGui::InputInt( "Zone", &zoneId, ImGuiInputTextFlags_EnterReturnsTrue ) )
       pPlayer->setZone( zoneId );
 
-    if( ImGui::InputFloat3( "X Y Z", v, "%.4f", ImGuiInputTextFlags_EnterReturnsTrue ) )
+    if( ImGui::InputFloat3( "X / Y / Z", v, "%.4f", ImGuiInputTextFlags_EnterReturnsTrue ) )
+      updatePos = true;
+
+    if( ImGui::SliderAngle( "Rotation", &rot ) )
       updatePos = true;
 
     if( updatePos )
@@ -191,10 +200,14 @@ void Window::CharacterDetailsWindow::drawPositionInfo( Sapphire::Entity::PlayerP
       Common::FFXIVARR_POSITION3 playerPos = { v[0], v[1], v[2] };
       pPlayer->setPos( playerPos );
 
+      pPlayer->setRot( rot );
+
       auto setActorPosPacket = Network::Packets::makeZonePacket< Network::Packets::Server::FFXIVIpcActorSetPos >( pPlayer->getId() );
       setActorPosPacket->data().x = playerPos.x;
       setActorPosPacket->data().y = playerPos.y;
       setActorPosPacket->data().z = playerPos.z;
+      setActorPosPacket->data().r16 = Util::floatToUInt16Rot( rot );
+
       pPlayer->queuePacket( setActorPosPacket );
     }
 
