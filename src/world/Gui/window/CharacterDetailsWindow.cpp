@@ -68,7 +68,8 @@ void Window::CharacterDetailsWindow::render()
 
 void Window::CharacterDetailsWindow::drawBasicInfo( Sapphire::Entity::PlayerPtr pPlayer )
 {
-  ImGui::PushFont( ImGui::GetIO().Fonts->Fonts[1] );
+  //ImGui::PushFont( ImGui::GetIO().Fonts->Fonts[1] );
+  Style::pushFont( Style::FontStyle::Big );
   ImGui::TextColored( Style::COLOR_ACCENT_H, pPlayer->getName().c_str() );
   ImGui::PopFont();
 

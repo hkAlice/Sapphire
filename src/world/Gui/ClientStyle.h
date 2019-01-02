@@ -31,6 +31,12 @@ namespace Sapphire::GUI
       static const ImVec4 COLOR_SUCCESS_L = ImVec4( 0.16f, 0.4f, 0.24f, 0.6f );
       static const ImVec4 COLOR_SUCCESS_H = ImVec4( 0.16f, 0.4f, 0.24f, 1.f );
 
+      enum FontStyle
+      {
+        Default = 0,
+        Big = 1
+      };
+
       static ImFont* FONT_DEFAULT;
       static ImFont* FONT_BIG;
 
@@ -142,7 +148,7 @@ namespace Sapphire::GUI
          style->ScrollbarRounding = 0.f;
       }
 
-      void inline setFont( const std::string& fontPath, int sizeDefault, int sizeBig, FontData& fontData )
+      void inline addFont( const std::string& fontPath, int sizeDefault, int sizeBig, FontData& fontData )
       {
         ImGuiIO& io = ImGui::GetIO();
 
@@ -156,6 +162,16 @@ namespace Sapphire::GUI
 
         io.Fonts->GetTexDataAsRGBA32( &fontData.pixels, &fontData.width, &fontData.height, &fontData.bpp );
         //ImGui::PushFont( appFont );
+      }
+
+      void inline pushFont( FontStyle fontIndex )
+      {
+        ImGui::PushFont( ImGui::GetIO().Fonts->Fonts[fontIndex] );
+      }
+
+      void inline popFont()
+      {
+        ImGui::PopFont();
       }
    }
 }

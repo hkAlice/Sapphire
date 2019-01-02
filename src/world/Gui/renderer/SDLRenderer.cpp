@@ -64,7 +64,7 @@ void Renderer::SDLRenderer::init( ClientControlPtr clientControl )
 
    // Setup style
    Style::applyAppStyle();
-   Style::setFont( "mplus-1c-regular.ttf", 16, 32, m_fontData );
+   Style::addFont( "mplus-1c-regular.ttf", 18, 36, m_fontData );
 
    m_background = Style::COLOR_APPBG;
 }
