@@ -29,13 +29,19 @@ namespace Sapphire::GUI::Window
       virtual void init();
 
    private:
-      void drawBasicInfo( Entity::PlayerPtr pPlayer );
+      void drawBasicInfo();
 
-      void drawActionsInfo( Entity::PlayerPtr pPlayer );
+      void drawActionsInfo();
 
-      void drawPositionInfo( Entity::PlayerPtr pPlayer );
+      void drawPositionInfo();
 
-      void drawInventoryInfo( Entity::PlayerPtr pPlayer );
+      void drawInventoryInfo();
+
+      void drawInstanceInfo();
+
+      // todo: rethink - store pPlayer in class, remove func args
+
+      Entity::PlayerPtr m_pPlayer;
 
       ClientControlPtr m_pClientControl;
 

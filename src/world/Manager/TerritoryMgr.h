@@ -155,6 +155,12 @@ namespace Sapphire::World::Manager
      */
     const std::pair< uint16_t, uint16_t >& getCurrentFestival() const;
 
+    /*!
+     * @brief Gets map of all instances and their respective zone
+     * @return map with K,V type of instance ID and a Zone ptr
+     */
+    const std::unordered_map< uint32_t, ZonePtr >& getAllInstances() const;
+
   private:
     using TerritoryTypeDetailCache = std::unordered_map< uint16_t, Data::TerritoryTypePtr >;
     using InstanceIdToZonePtrMap = std::unordered_map< uint32_t, ZonePtr >;

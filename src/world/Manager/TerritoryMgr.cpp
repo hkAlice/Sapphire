@@ -562,6 +562,11 @@ const std::pair< uint16_t, uint16_t >& Sapphire::World::Manager::TerritoryMgr::g
   return m_currentFestival;
 }
 
+const std::unordered_map< uint32_t, Sapphire::ZonePtr >& Sapphire::World::Manager::TerritoryMgr::getAllInstances() const
+{
+  return m_instanceIdToZonePtrMap;
+}
+
 void Sapphire::World::Manager::TerritoryMgr::setCurrentFestival( uint16_t festivalId, uint16_t additionalFestival )
 {
   m_currentFestival = { festivalId, additionalFestival };

@@ -47,18 +47,17 @@ void Window::CharacterDetailsWindow::render()
   {
     if( pSession )
     {
-      auto pPlayer = pSession->getPlayer();
+      m_pPlayer = pSession->getPlayer();
 
-      drawBasicInfo( pPlayer );
+      drawBasicInfo();
       ImGui::Separator();
 
-      drawActionsInfo( pPlayer );
+      drawActionsInfo();
       ImGui::Separator();
 
-      drawPositionInfo( pPlayer );
-
-      drawInventoryInfo( pPlayer );
-
+      drawPositionInfo();
+      drawInventoryInfo();
+      drawInstanceInfo();
      
     }
   }
@@ -66,17 +65,17 @@ void Window::CharacterDetailsWindow::render()
   ImGui::End();
 }
 
-void Window::CharacterDetailsWindow::drawBasicInfo( Sapphire::Entity::PlayerPtr pPlayer )
+void Window::CharacterDetailsWindow::drawBasicInfo()
 {
   //ImGui::PushFont( ImGui::GetIO().Fonts->Fonts[1] );
   Style::pushFont( Style::FontStyle::Big );
-  ImGui::TextColored( Style::COLOR_ACCENT_H, pPlayer->getName().c_str() );
+  ImGui::TextColored( Style::COLOR_ACCENT_H, m_pPlayer->getName().c_str() );
   ImGui::PopFont();
 
-  ImGui::Text( Locale::RaceName[pPlayer->getRace()] );
+  ImGui::Text( Locale::RaceName[m_pPlayer->getRace()] );
 
-  std::string lvText = Locale::JobName[pPlayer->getClassAsInt()];
-  lvText += " Lv " + std::to_string( pPlayer->getLevel() );
+  std::string lvText = Locale::JobName[m_pPlayer->getClassAsInt()];
+  lvText += " Lv " + std::to_string( m_pPlayer->getLevel() );
 
   ImGui::Text( lvText.c_str() );
 
@@ -84,10 +83,10 @@ void Window::CharacterDetailsWindow::drawBasicInfo( Sapphire::Entity::PlayerPtr 
   ImGui::Columns( 1 );
 
   // HP
-  float hpPercentage = pPlayer->getHp() / static_cast<float>( pPlayer->getMaxHp() );
+  float hpPercentage = m_pPlayer->getHp() / static_cast<float>( m_pPlayer->getMaxHp() );
 
   char hpBuf[32];
-  sprintf( hpBuf, "%d/%d HP", pPlayer->getHp(), pPlayer->getMaxHp() );
+  sprintf( hpBuf, "%d/%d HP", m_pPlayer->getHp(), m_pPlayer->getMaxHp() );
   Style::applyGroupedStyle( Style::GroupType::Plot, Style::StyleColor::Success );
 
   ImGui::ProgressBar( hpPercentage, ImVec2( -1.f, 0.f ), hpBuf );
@@ -99,10 +98,10 @@ void Window::CharacterDetailsWindow::drawBasicInfo( Sapphire::Entity::PlayerPtr 
 
   // MP
 
-  float mpPercentage = pPlayer->getMp() / static_cast<float>( pPlayer->getMaxMp() );
+  float mpPercentage = m_pPlayer->getMp() / static_cast<float>( m_pPlayer->getMaxMp() );
 
   char mpBuf[32];
-  sprintf( mpBuf, "%d/%d MP", pPlayer->getMp(), pPlayer->getMaxMp() );
+  sprintf( mpBuf, "%d/%d MP", m_pPlayer->getMp(), m_pPlayer->getMaxMp() );
 
   Style::applyGroupedStyle( Style::GroupType::Plot, Style::StyleColor::Main );
   ImGui::ProgressBar( mpPercentage, ImVec2( -1.f, 0.f ), mpBuf );
@@ -114,10 +113,10 @@ void Window::CharacterDetailsWindow::drawBasicInfo( Sapphire::Entity::PlayerPtr 
 
   // TP
 
-  float tpPercentage = pPlayer->getTp() / 1000.f;
+  float tpPercentage = m_pPlayer->getTp() / 1000.f;
 
   char tpBuf[32];
-  sprintf( tpBuf, "%d/%d TP", pPlayer->getTp(), 1000 );
+  sprintf( tpBuf, "%d/%d TP", m_pPlayer->getTp(), 1000 );
 
   Style::applyGroupedStyle( Style::GroupType::Plot, Style::StyleColor::Accent );
   ImGui::ProgressBar( tpPercentage, ImVec2( -1.f, 0.f ), tpBuf );
@@ -125,7 +124,7 @@ void Window::CharacterDetailsWindow::drawBasicInfo( Sapphire::Entity::PlayerPtr 
   ImGui::Columns( 1, "charstats", true );
 }
 
-void Window::CharacterDetailsWindow::drawActionsInfo( Sapphire::Entity::PlayerPtr pPlayer )
+void Window::CharacterDetailsWindow::drawActionsInfo()
 {
   static int selectedCharacter = 0;
 
@@ -135,7 +134,7 @@ void Window::CharacterDetailsWindow::drawActionsInfo( Sapphire::Entity::PlayerPt
     ImGui::Text( "Players nearby" );
     ImGui::BeginChild( "Players nearby", ImVec2( -1.f, 100.f ), false );
 
-    for( const auto& pActor : pPlayer->getInRangeActors() )
+    for( const auto& pActor : m_pPlayer->getInRangeActors() )
     {
       if( pActor->isPlayer() )
       {
@@ -158,12 +157,12 @@ void Window::CharacterDetailsWindow::drawActionsInfo( Sapphire::Entity::PlayerPt
     ImGui::Columns( 2, "operations", false );
 
     if( ImGui::Button( "Kill", ImVec2( -1.0f, 0.0f ) ) )
-      pPlayer->takeDamage( pPlayer->getMaxHp() );
+      m_pPlayer->takeDamage( m_pPlayer->getMaxHp() );
 
     ImGui::NextColumn();
 
     if( ImGui::Button( "Kick", ImVec2( -1.0f, 0.0f ) ) )
-      pPlayer->setMarkedForRemoval();
+      m_pPlayer->setMarkedForRemoval();
 
     ImGui::EndChild();
   }
@@ -173,7 +172,7 @@ void Window::CharacterDetailsWindow::drawActionsInfo( Sapphire::Entity::PlayerPt
   m_pClientControl->mainCtx->setSelectedCharacter( selectedCharacter );
 }
 
-void Window::CharacterDetailsWindow::drawPositionInfo( Sapphire::Entity::PlayerPtr pPlayer )
+void Window::CharacterDetailsWindow::drawPositionInfo()
 {
   if( ImGui::CollapsingHeader( "Position" ) )
   {
@@ -182,13 +181,13 @@ void Window::CharacterDetailsWindow::drawPositionInfo( Sapphire::Entity::PlayerP
     // TODO: 1. sapphire doesn't do pitch/yaw/roll
     // 2. imgui does not provide sliderangle3, use sliderfloat3
 
-    pPlayer->getRot();
-    float v[3] = { pPlayer->getPos().x, pPlayer->getPos().y, pPlayer->getPos().z };
-    float rot = pPlayer->getRot();
-    int zoneId = pPlayer->getZoneId();
+    m_pPlayer->getRot();
+    float v[3] = { m_pPlayer->getPos().x, m_pPlayer->getPos().y, m_pPlayer->getPos().z };
+    float rot = m_pPlayer->getRot();
+    int zoneId = m_pPlayer->getZoneId();
 
     if( ImGui::InputInt( "Zone", &zoneId, ImGuiInputTextFlags_EnterReturnsTrue ) )
-      pPlayer->setZone( zoneId );
+      m_pPlayer->setZone( zoneId );
 
     if( ImGui::InputFloat3( "X / Y / Z", v, "%.4f", ImGuiInputTextFlags_EnterReturnsTrue ) )
       updatePos = true;
@@ -199,28 +198,28 @@ void Window::CharacterDetailsWindow::drawPositionInfo( Sapphire::Entity::PlayerP
     if( updatePos )
     {
       Common::FFXIVARR_POSITION3 playerPos = { v[0], v[1], v[2] };
-      pPlayer->setPos( playerPos );
+      m_pPlayer->setPos( playerPos );
 
-      pPlayer->setRot( rot );
+      m_pPlayer->setRot( rot );
 
-      auto setActorPosPacket = Network::Packets::makeZonePacket< Network::Packets::Server::FFXIVIpcActorSetPos >( pPlayer->getId() );
+      auto setActorPosPacket = Network::Packets::makeZonePacket< Network::Packets::Server::FFXIVIpcActorSetPos >( m_pPlayer->getId() );
       setActorPosPacket->data().x = playerPos.x;
       setActorPosPacket->data().y = playerPos.y;
       setActorPosPacket->data().z = playerPos.z;
       setActorPosPacket->data().r16 = Util::floatToUInt16Rot( rot );
 
-      pPlayer->queuePacket( setActorPosPacket );
+      m_pPlayer->queuePacket( setActorPosPacket );
     }
 
   }
 }
 
-void Window::CharacterDetailsWindow::drawInventoryInfo( Sapphire::Entity::PlayerPtr pPlayer )
+void Window::CharacterDetailsWindow::drawInventoryInfo()
 {
   if( ImGui::CollapsingHeader( "Inventory" ) )
   {
     int i = 0;
-    auto pInventoryMap = pPlayer->getInventoryMap();
+    auto pInventoryMap = m_pPlayer->getInventoryMap();
     std::string itemName = "";
 
     if( ImGui::TreeNode( "Bag" ) )
@@ -264,5 +263,13 @@ void Window::CharacterDetailsWindow::drawInventoryInfo( Sapphire::Entity::Player
       ImGui::TreePop();
     }
 
+  }
+}
+
+void Window::CharacterDetailsWindow::drawInstanceInfo()
+{
+  if( ImGui::CollapsingHeader( "Instance" ) )
+  {
+    
   }
 }
