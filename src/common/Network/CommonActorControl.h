@@ -64,7 +64,7 @@ namespace Sapphire::Network::ActorControl
     SpawnEffect = 0x25,
     ToggleInvisible = 0x26,
     DeadFadeOut = 0x27,
-    SetSystemActionUnlocked = 0x29,
+    SetRewardFlag = 0x29,
 
     UpdateUiExp = 0x2B,
     SetFallDamage = 0x2D,
@@ -218,7 +218,18 @@ namespace Sapphire::Network::ActorControl
     SetFavorite = 0x1FC,
     LearnTeleport = 0x1FD,
 
-    OpenRecommendationGuide = 0x200,
+    /*!
+     * param1 = event type bitmask
+     *          1 = Quest
+     *          2 = GuildLeveAssignment
+     *          4 = GuildOrderGuide
+     *          8 = TripleTriad
+     *          16 = CustomTalk
+     *          32 = PreHandler
+     */
+    BeginMapUpdate = 0x1FF,
+    FinishMapUpdate = 0x200,
+
     ArmoryErrorMsg = 0x201,
 
     AchievementPopup = 0x203,

@@ -62,7 +62,6 @@ void PlayerMgr::onOnlineStatusChanged( Entity::Player& player, bool updateProfil
 void PlayerMgr::onEquipDisplayFlagsChanged( Entity::Player& player )
 {
   auto& server = Common::Service< World::WorldServer >::ref();
-  PlayerMgr::sendDebug( player, "EquipDisplayFlag CHANGE: {0}", player.getEquipDisplayFlags() );
   auto paramPacket = makeZonePacket< FFXIVIpcConfig >( player.getId() );
   paramPacket->data().flag = player.getEquipDisplayFlags();
   player.sendToInRangeSet( paramPacket, true );
@@ -186,10 +185,6 @@ void PlayerMgr::onMountUpdate( Entity::Player& player, uint32_t mountId )
     player.sendToInRangeSet( makeActorControl( player.getId(), ActorControlType::SetStatus,
                       static_cast< uint8_t >( Common::ActorStatus::Mounted ) ), true );
     player.sendToInRangeSet( makeActorControlSelf( player.getId(), 0x39e, 12 ), true ); //?
-
-    auto mountPacket = makeZonePacket< FFXIVIpcMount >( player.getId() );
-    mountPacket->data().id = mountId;
-    player.sendToInRangeSet( mountPacket, true );
   }
   else
   {
@@ -197,16 +192,20 @@ void PlayerMgr::onMountUpdate( Entity::Player& player, uint32_t mountId )
                       static_cast< uint8_t >( Common::ActorStatus::Idle ) ), true );
     player.sendToInRangeSet( makeActorControlSelf( player.getId(), ActorControlType::Dismount, 1 ), true );
   }
+
+  auto mountPacket = makeZonePacket< FFXIVIpcMount >( player.getId() );
+  mountPacket->data().id = mountId;
+  player.sendToInRangeSet( mountPacket, true );
 }
 
-void PlayerMgr::onMobKill( Entity::Player& player, uint16_t nameId, uint32_t layoutId )
+void PlayerMgr::onMobKill( Entity::Player& player, Entity::BNpc& bnpc )
 {
   auto& scriptMgr = Common::Service< Scripting::ScriptMgr >::ref();
-  scriptMgr.onBNpcKill( player, nameId, layoutId );
+  scriptMgr.onBNpcKill( player, bnpc );
 
   if( player.hasReward( Common::UnlockEntry::HuntingLog ) )
   {
-    player.updateHuntingLog( nameId );
+    player.updateHuntingLog( bnpc.getBNpcNameId() );
   }
 }
 

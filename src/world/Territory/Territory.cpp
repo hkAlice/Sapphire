@@ -214,7 +214,7 @@ void Territory::pushActor( const Entity::GameObjectPtr& pActor )
   if( !pCell )
   {
     pCell = create( cx, cy );
-    pCell->init( cx, cy, shared_from_this() );
+    pCell->init( cx, cy );
   }
 
   pCell->addActor( pActor );
@@ -565,11 +565,9 @@ void Territory::updateCellActivity( uint32_t x, uint32_t y, int32_t radius )
         if( isCellActive( posX, posY ) )
         {
           pCell = create( posX, posY );
-          pCell->init( posX, posY, shared_from_this() );
+          pCell->init( posX, posY );
 
           pCell->setActivity( true );
-
-          assert( !pCell->isLoaded() );
 
         }
       }
@@ -579,11 +577,6 @@ void Territory::updateCellActivity( uint32_t x, uint32_t y, int32_t radius )
         if( isCellActive( posX, posY ) && !pCell->isActive() )
         {
           pCell->setActivity( true );
-
-          if( !pCell->isLoaded() )
-          {
-
-          }
         }
         else if( !isCellActive( posX, posY ) && pCell->isActive() )
           pCell->setActivity( false );
@@ -612,7 +605,7 @@ void Territory::updateActorPosition( Entity::GameObject& actor )
   if( !pCell )
   {
     pCell = create( cellX, cellY );
-    pCell->init( cellX, cellY, shared_from_this() );
+    pCell->init( cellX, cellY );
   }
 
   // If object moved cell
@@ -829,7 +822,7 @@ uint32_t Territory::getNextEffectSequence()
   return m_effectCounter++;
 }
 
-Entity::BNpcPtr Territory::createBNpcFromInstanceId( uint32_t levelId, uint32_t hp, Common::BNpcType bnpcType, uint32_t triggerOwnerId )
+Entity::BNpcPtr Territory::createBNpcFromLayoutId( uint32_t levelId, uint32_t hp, Common::BNpcType bnpcType, uint32_t triggerOwnerId )
 {
   auto infoPtr = m_bNpcBaseMap.find( levelId );
   if( infoPtr == m_bNpcBaseMap.end() )
@@ -850,7 +843,7 @@ Entity::BNpcPtr Territory::getActiveBNpcByEntityId( uint32_t entityId )
   return it->second;
 }
 
-Entity::BNpcPtr Territory::getActiveBNpcByInstanceId( uint32_t instanceId )
+Entity::BNpcPtr Territory::getActiveBNpcByLayoutId( uint32_t instanceId )
 {
   for( const auto& bnpcIt : m_bNpcMap )
   {
@@ -860,7 +853,7 @@ Entity::BNpcPtr Territory::getActiveBNpcByInstanceId( uint32_t instanceId )
   return nullptr;
 }
 
-Entity::BNpcPtr Territory::getActiveBNpcByInstanceIdAndTriggerOwner( uint32_t instanceId, uint32_t triggerOwnerId )
+Entity::BNpcPtr Territory::getActiveBNpcByLayoutIdAndTriggerOwner( uint32_t instanceId, uint32_t triggerOwnerId )
 {
   for( const auto& bnpcIt : m_bNpcMap )
   {

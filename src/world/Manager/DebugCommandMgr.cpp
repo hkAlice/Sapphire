@@ -528,7 +528,7 @@ void DebugCommandMgr::add( char* data, Entity::Player& player, std::shared_ptr< 
     uint32_t id;
 
     sscanf( params.c_str(), "%d", &id );
-    player.setSystemActionUnlocked( static_cast< Common::UnlockEntry >( id ) );
+    player.setRewardFlag( static_cast< Common::UnlockEntry >( id ) );
   }
   else if ( subCommand == "effect")
   {
@@ -1434,10 +1434,18 @@ void DebugCommandMgr::easyWarp( char* data, Sapphire::Entity::Player& player, st
     warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 156 )->getGuId(), { 22.2674f, 21.2527f, -634.261f }, -0.369245f );
   else if( subCommand == "little_solace" )
     warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 152 )->getGuId(), { 24.557f, -3.78776f, 212.615f }, 2.59117f );
-  else if( subCommand == "adders_nest" )
-    warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 132 )->getGuId(), {-64.7448f, -0.503434f, 2.21786f }, -2.64096f );
-  else if( subCommand == "hall_of_flames" )
+  else if( subCommand == "adders_nest" || subCommand == "gridania_gc" )
+    warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 132 )->getGuId(), { -64.7448f, -0.503434f, 2.21786f }, -2.64096f );
+  else if( subCommand == "hall_of_flames" || subCommand == "uldah_gc" )
     warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 130 )->getGuId(), { -129.24f, 4.1f, -93.5221f }, -2.30172f );
+  else if( subCommand == "maelsrom_command" || subCommand == "limsa_gc" )
+    warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 128 )->getGuId(), { 76.3952f, 40.0955f, 71.6461f }, 1.62673f );
+  else if( subCommand == "carline_canopy" || subCommand == "gridania_adventurer" )
+    warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 132 )->getGuId(), { 43.729f, -7.96559f, 103.965f }, -1.59436f );
+  else if( subCommand == "observatorium" )
+    warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 155 )->getGuId(), { 224.965f, 221.958f, 301.33f }, -0.0316129f );
+  else if( subCommand == "rising_stones" )
+    warpMgr.requestMoveTerritory( player, Common::WarpType::WARP_TYPE_GM, terriMgr.getZoneByTerritoryTypeId( 156 )->getGuId(), { 22.7204f, 21.2639f, -635.704f }, -0.360031f );
   else
     PlayerMgr::sendUrgent( player, "{0} is not a valid easyWarp location.", subCommand );
 }

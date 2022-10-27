@@ -1,4 +1,5 @@
 #include <Actor/Player.h>
+#include <Actor/BNpc.h>
 #include "Manager/EventMgr.h"
 #include <ScriptObject.h>
 #include <Service.h>
@@ -72,7 +73,7 @@ public:
                                    {
                                      eventMgr().sendEventNotice( player, 0x050002, 0, 1, 0, 0 );
                                      player.registerAetheryte( 2 );
-                                     player.setSystemActionUnlocked( Common::UnlockEntry::Return );
+                                     player.setRewardFlag( Common::UnlockEntry::Return );
                                      Scene00002( player );
                                    },
                                    nullptr, getId() );

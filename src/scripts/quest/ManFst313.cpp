@@ -4,6 +4,7 @@
 
 #include "Manager/EventMgr.h"
 #include <Actor/Player.h>
+#include <Actor/BNpc.h>
 #include <ScriptObject.h>
 #include <Service.h>
 
@@ -66,6 +67,7 @@ private:
   static constexpr auto LocSe1 = 42;
   static constexpr auto LocTalkshape1 = 6;
   static constexpr auto Territorytype0 = 212;
+  static constexpr auto AchievementCompleteQuest = 785; //Those Who Wait
 
 public:
   ManFst313() : Sapphire::ScriptAPI::QuestScript( 66053 ){};

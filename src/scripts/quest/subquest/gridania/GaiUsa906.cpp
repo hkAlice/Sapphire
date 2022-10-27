@@ -4,6 +4,7 @@
 
 #include "Manager/EventMgr.h"
 #include <Actor/Player.h>
+#include <Actor/BNpc.h>
 #include <ScriptObject.h>
 #include <Service.h>
 
@@ -52,6 +53,7 @@ private:
   static constexpr auto Territorytype0 = 148;
   static constexpr auto UnlockAddNewContentToCf = 3702;
   static constexpr auto UnlockImageDungeonHaukke = 80;
+  static constexpr auto AchievementCompleteQuest = 784; //Skeletons
 
 public:
   GaiUsa906() : Sapphire::ScriptAPI::QuestScript( 66337 ){};
