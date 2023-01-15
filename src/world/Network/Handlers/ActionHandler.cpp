@@ -102,24 +102,39 @@ void Sapphire::Network::GameConnection::selectGroundActionRequest( const Packets
   const auto sequence = packet.data().RequestId;
   const auto pos = packet.data().Pos;
 
-  // todo: find out if there are any other action types which actually use this handler
-  if( type != Common::SkillType::Normal )
-  {
-    PlayerMgr::sendDebug( player, "Skill type {0} not supported by aoe action handler!", type );
-    return;
-  }
-
-  PlayerMgr::sendDebug( player, "Skill type: {0}, sequence: {1}, actionId: {2}, x:{3}, y:{4}, z:{5}",
-                    type, sequence, actionId, pos.x, pos.y, pos.z );
-
   auto& exdData = Common::Service< Data::ExdData >::ref();
-
-  auto action = exdData.getRow< Excel::Action >( actionId );
-
-  // ignore invalid actions
-  if( !action )
-    return;
-
   auto& actionMgr = Common::Service< World::Manager::ActionMgr >::ref();
-  actionMgr.handlePlacedPlayerAction( player, actionId, action, pos, sequence );
+  auto& eventMgr = Common::Service< World::Manager::EventMgr >::ref();
+
+  // todo: find out if there are any other action types which actually use this handler
+  switch( type )
+  {
+    default:
+    {
+      PlayerMgr::sendDebug( player, "Skill type {0} not supported. Defaulting to normal action", type );
+    }
+    case Common::SkillType::Normal:
+    {
+      PlayerMgr::sendDebug( player, "Skill type: {0}, sequence: {1}, actionId: {2}, x:{3}, y:{4}, z:{5}",
+                        type, sequence, actionId, pos.x, pos.y, pos.z );
+
+      auto action = exdData.getRow< Excel::Action >( actionId );
+
+      // ignore invalid actions
+      if( !action )
+        return;
+
+      auto& actionMgr = Common::Service< World::Manager::ActionMgr >::ref();
+      actionMgr.handlePlacedPlayerAction( player, actionId, action, pos, sequence );
+
+      break;
+    }
+    case Common::SkillType::EventItem:
+    {
+      auto action = exdData.getRow< Excel::EventItem >( actionId );
+      assert( action );
+      actionMgr.handleEventItemAction( player, actionId, action, sequence, 0 );
+      break;
+    }
+  }
 }

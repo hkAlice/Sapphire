@@ -32,6 +32,7 @@ Sapphire::Entity::EventObject::EventObject( uint32_t actorId, uint32_t objectId,
   m_state( initialState ),
   m_objectId( objectId ),
   m_name( givenName ),
+  m_scale( 1.f ),
   m_housingLink( 0 ),
   m_permissionInvisibility( permissionInv ),
   m_ownerId( Common::INVALID_GAME_OBJECT_ID )
@@ -141,7 +142,6 @@ void Sapphire::Entity::EventObject::spawn( Sapphire::Entity::PlayerPtr pTarget )
   eobjStatePacket->data().Scale = getScale();
   eobjStatePacket->data().EntityId = getId();
   eobjStatePacket->data().Dir = Util::floatToUInt16Rot( getRot() );
-  eobjStatePacket->data().OwnerId = getOwnerId();
   eobjStatePacket->data().PermissionInvisibility = getPermissionInvisibility();
   eobjStatePacket->data().Args = 0xE0;
   eobjStatePacket->data().Args2 = 0; // initial animation state

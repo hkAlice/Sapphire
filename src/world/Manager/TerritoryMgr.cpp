@@ -141,12 +141,21 @@ bool TerritoryMgr::isDefaultTerritory( uint32_t territoryTypeId ) const
   if( !pTeri )
     return false;
 
+  if (pTeri->data().IntendedUse == TerritoryIntendedUse::BeforeTrialDung) {
+    auto& exdData = Common::Service< Data::ExdData >::ref();
+    auto pPlaceName = exdData.getRow< Excel::PlaceName >( pTeri->data().Area );
+    Logger::info(pTeri->getString(pTeri->data().Name));
+    Logger::info(pPlaceName->getString(pPlaceName->data().Text.SGL));
+  }
+    
+
   return pTeri->data().IntendedUse == TerritoryIntendedUse::Inn ||
          pTeri->data().IntendedUse == TerritoryIntendedUse::Town ||
          pTeri->data().IntendedUse == TerritoryIntendedUse::OpenWorld ||
          pTeri->data().IntendedUse == TerritoryIntendedUse::OpeningArea ||
          pTeri->data().IntendedUse == TerritoryIntendedUse::GoldSaucer ||
-         pTeri->data().IntendedUse == TerritoryIntendedUse::ChocoboSquare;
+         pTeri->data().IntendedUse == TerritoryIntendedUse::ChocoboSquare ||
+         pTeri->data().IntendedUse == TerritoryIntendedUse::BeforeTrialDung;
 
 }
 
