@@ -7,6 +7,8 @@
 #include <Actor/BNpc.h>
 #include "Forwards.h"
 
+#include <utility>
+
 namespace Sapphire::Network::Packets::WorldPackets::Server
 {
 
@@ -58,8 +60,8 @@ namespace Sapphire::Network::Packets::WorldPackets::Server
 
   };
   template< typename... Args >
-  std::shared_ptr< HudParamPacket > makeHudParam( Args... args )
+  std::shared_ptr< HudParamPacket > makeHudParam( Args&&... args )
   {
-    return std::make_shared< HudParamPacket >( args... );
+    return std::make_shared< HudParamPacket >( std::forward< Args >( args )... );
   }
 }

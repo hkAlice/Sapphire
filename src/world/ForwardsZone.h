@@ -48,6 +48,9 @@ TYPE_FORWARD( HousingInteriorTerritory );
 
 namespace World::AI
 {
+  TYPE_FORWARD( BNpcController );
+  TYPE_FORWARD( CombatBNpcController );
+
   TYPE_FORWARD( GambitTargetCondition );
   TYPE_FORWARD( TopHateTargetCondition );
   TYPE_FORWARD( HPSelfPctLessThanTargetCondition );

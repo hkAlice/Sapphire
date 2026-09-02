@@ -356,7 +356,7 @@ void Territory::pushActor( const Entity::GameObjectPtr& pActor )
   {
     auto pBNpc = pActor->getAsBNpc();
 
-    if( m_pNaviProvider && !pBNpc->hasFlag( Entity::Immobile ) )
+    if( m_pNaviProvider && pBNpc->controllerUsesNavigation() )
     {
       auto state = pBNpc->getState();
       bool isRunning = state == Entity::BNpcState::Retreat || state == Entity::BNpcState::Combat;
@@ -423,9 +423,15 @@ void Territory::removeActor( const Entity::GameObjectPtr& pActor )
   }
   else if( pActor->isBattleNpc() )
   {
-    if( m_pNaviProvider )
-      m_pNaviProvider->removeAgent( pActor->getAsChara()->getAgentId() );
-    m_bNpcMap.erase( pActor->getId() );
+    auto pBNpc = pActor->getAsBNpc();
+    pBNpc->detachController();
+
+    if( m_pNaviProvider && pBNpc->getAgentId() != -1 )
+      m_pNaviProvider->removeAgent( pBNpc->getAgentId() );
+
+    pBNpc->setAgentId( -1 );
+    pBNpc->setPathingActive( false );
+    m_bNpcMap.erase( pBNpc->getId() );
   }
   else if( pActor->isEventObj() )
   {

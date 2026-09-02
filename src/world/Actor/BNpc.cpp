@@ -51,15 +51,8 @@
 #include <AI/GambitRule.h>
 #include <AI/GambitPack.h>
 #include <AI/GambitTargetCondition.h>
-#include <AI/Fsm/StateMachine.h>
-#include <AI/Fsm/Condition.h>
-#include <AI/Fsm/StateIdle.h>
-#include <AI/Fsm/StateRoam.h>
-#include <AI/Fsm/StateCombat.h>
-#include <AI/Fsm/StateRetreat.h>
-#include <AI/Fsm/StateDead.h>
-#include <AI/Fsm/StateFollowPath.h>
-#include <AI/Fsm/StateResumePath.h>
+#include <AI/Controller/BNpcController.h>
+#include <AI/Controller/CombatBNpcController.h>
 #include <AI/TargetHelper.h>
 
 using namespace Sapphire;
@@ -307,7 +300,10 @@ BNpc::BNpc( uint32_t id, std::shared_ptr< Common::BNpcCacheEntry > pInfo, const 
   calculateStats();
 }
 
-BNpc::~BNpc() = default;
+BNpc::~BNpc()
+{
+  detachController();
+}
 
 uint8_t BNpc::getAggressionMode() const
 {
@@ -410,9 +406,57 @@ void BNpc::setState( BNpcState state )
 
 float BNpc::getCurrentSpeed() const
 {
+  if( m_pController )
+    return m_pController->getMovementSpeed( *this );
+
+  return getDefaultMovementSpeed();
+}
+
+float BNpc::getDefaultMovementSpeed() const
+{
   auto state = getState();
   bool isRunning = state == Entity::BNpcState::Retreat || state == Entity::BNpcState::Combat;
   return isRunning ? getRunSpeed() : getWalkSpeed();
+}
+
+void BNpc::setController( World::AI::BNpcControllerUPtr pController )
+{
+  const bool shouldInitialize = m_controllerInitialized;
+  detachController();
+  m_pController = std::move( pController );
+
+  if( m_pController && shouldInitialize )
+  {
+    m_pController->initialize( *this );
+    m_controllerInitialized = true;
+  }
+}
+
+World::AI::BNpcController* BNpc::getController()
+{
+  return m_pController.get();
+}
+
+const World::AI::BNpcController* BNpc::getController() const
+{
+  return m_pController.get();
+}
+
+bool BNpc::controllerUsesNavigation() const
+{
+  if( m_pController )
+    return m_pController->usesNavigation( *this );
+
+  return !hasFlag( Entity::Immobile );
+}
+
+void BNpc::detachController()
+{
+  if( !m_pController || !m_controllerInitialized )
+    return;
+
+  m_pController->onDetach( *this );
+  m_controllerInitialized = false;
 }
 
 bool BNpc::moveTo( const Vector3& pos )
@@ -785,22 +829,24 @@ void BNpc::notifyPlayerDeaggro( const CharaPtr& pChara )
 void BNpc::onTick()
 {
   Chara::onTick();
-  if( m_state == BNpcState::Retreat )
-  {
-    restHp();
-  }
+
+  if( m_pController )
+    m_pController->onTick( *this );
 }
 
 void BNpc::update( uint64_t tickCount )
 {
   Chara::update( tickCount );
 
-  checkAggro();
+  if( m_pController )
+    m_pController->updateBeforePositionSync( *this, tickCount );
+
   // removed check for now, replaced by position check to last position
   //if( m_dirtyFlag & DirtyFlag::Position )
   sendPositionUpdate( tickCount );
 
-  m_fsm->update( *this, tickCount );
+  if( m_pController )
+    m_pController->updateAfterPositionSync( *this, tickCount );
 }
 
 void BNpc::restHp()
@@ -820,16 +866,8 @@ void BNpc::restHp()
 
 void BNpc::onActionHostile( CharaPtr pSource, int32_t aggro )
 {
-  if( !isAlive() )
-    return;
-
-  hateListUpdate( pSource, aggro );
-
-  if( getCanSwapTarget() )// todo: only call on global server tick
-    updateAggroTarget();
-
-  if( !m_pOwner )
-    setOwner( pSource );
+  if( m_pController )
+    m_pController->onActionHostile( *this, pSource, aggro );
 }
 
 void BNpc::onDeath()
@@ -1131,6 +1169,11 @@ void BNpc::setOwner( const CharaPtr& m_pChara )
   server().queueForPlayers( getInRangePlayerIds(), setOwnerPacket );
 }
 
+CharaPtr BNpc::getOwner() const
+{
+  return m_pOwner;
+}
+
 void BNpc::setLevelId( uint32_t levelId )
 {
   m_levelId = levelId;
@@ -1339,60 +1382,13 @@ void BNpc::init()
   gambitPack->addTimeLine( AI::make_TopHateTargetCondition(), Action::make_Action( getAsChara(), 82, 0 ), 14 );
   m_pGambitPack = gambitPack;
   */
-  initFsm();
-}
+  if( !m_pController )
+    m_pController = std::make_unique< AI::CombatBNpcController >();
+  else if( m_controllerInitialized )
+    m_pController->onDetach( *this );
 
-void BNpc::initFsm()
-{
-  using namespace AI::Fsm;
-  m_fsm = make_StateMachine();
-  auto stateIdle = make_StateIdle();
-  auto stateCombat = make_StateCombat();
-  auto stateDead = make_StateDead();
-
-  auto& teriMgr = Common::Service< World::Manager::TerritoryMgr >::ref();
-  auto pZone = teriMgr.getTerritoryByGuId( getTerritoryId() );
-
-  if( m_pInfo->ServerPathId != 0 && pZone && pZone->getServerPath( m_pInfo->ServerPathId ) )
-  {
-    auto statePath = make_StateFollowPath();
-    auto stateResumePath = make_StateResumePath();
-    statePath->addTransition( stateCombat, make_HateListHasEntriesCondition() );
-    statePath->addTransition( stateDead, make_IsDeadCondition() );
-
-    stateCombat->addTransition( stateDead, make_IsDeadCondition() );
-    stateCombat->addTransition( stateResumePath, make_HateListEmptyCondition() );
-    stateResumePath->addTransition( statePath, make_RoamTargetReachedCondition() );
-
-    m_fsm->addState( statePath );
-
-    m_fsm->setCurrentState( statePath );
-  }
-  else
-  {
-    if( !hasFlag( Immobile ) && !hasFlag( NoRoam ) )
-    {
-      auto stateRoam = make_StateRoam();
-      stateIdle->addTransition( stateRoam, make_RoamNextTimeReachedCondition() );
-      stateRoam->addTransition( stateIdle, make_RoamTargetReachedCondition() );
-      stateRoam->addTransition( stateCombat, make_HateListHasEntriesCondition() );
-      stateRoam->addTransition( stateDead, make_IsDeadCondition() );
-      m_fsm->addState( stateRoam );
-    }
-    stateIdle->addTransition( stateCombat, make_HateListHasEntriesCondition() );
-    //stateCombat->addTransition( stateIdle, make_HateListEmptyCondition() );
-    stateIdle->addTransition( stateDead, make_IsDeadCondition() );
-    stateCombat->addTransition( stateDead, make_IsDeadCondition() );
-    m_fsm->addState( stateIdle );
-    if( !hasFlag( NoDeaggro ) )
-    {
-      auto stateRetreat = make_StateRetreat();
-      stateCombat->addTransition( stateRetreat, make_SpawnPointDistanceGtMaxDistanceCondition() );
-      stateCombat->addTransition( stateRetreat, make_HateListEmptyCondition() );
-      stateRetreat->addTransition( stateIdle, make_RoamTargetReachedCondition() );
-    }
-    m_fsm->setCurrentState( stateIdle );
-  }
+  m_pController->initialize( *this );
+  m_controllerInitialized = true;
 }
 
 void BNpc::processGambits( uint64_t tickCount )

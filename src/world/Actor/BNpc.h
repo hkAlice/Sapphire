@@ -115,6 +115,14 @@ namespace Sapphire::Entity
     void setState( BNpcState state );
 
     float getCurrentSpeed() const;
+    float getDefaultMovementSpeed() const;
+
+    // set navigation policy before pushing the BNpc into its owning teri
+    void setController( World::AI::BNpcControllerUPtr pController );
+    World::AI::BNpcController* getController();
+    const World::AI::BNpcController* getController() const;
+    bool controllerUsesNavigation() const;
+    void detachController();
 
     const HateList& getHateList() const;
     void hateListClear();
@@ -153,6 +161,7 @@ namespace Sapphire::Entity
     void checkAggro();
 
     void setOwner( const CharaPtr& m_pChara );
+    CharaPtr getOwner() const;
 
     void setLevelId( uint32_t levelId );
     uint32_t getLevelId() const;
@@ -192,8 +201,6 @@ namespace Sapphire::Entity
     const Common::Vector3& getRoamTargetPos() const;
     const Common::Vector3& getSpawnPos() const;
     float getSpawnRot() const;
-
-    void initFsm();
 
     bool getCanSwapTarget();
     void setCanSwapTarget( bool value );
@@ -252,8 +259,8 @@ namespace Sapphire::Entity
 
     CharaPtr m_pOwner;
     World::AI::GambitPackPtr m_pGambitPack;
-
-    std::shared_ptr< World::AI::Fsm::StateMachine > m_fsm;
+    World::AI::BNpcControllerUPtr m_pController;
+    bool m_controllerInitialized{ false };
   };
 
 }// namespace Sapphire::Entity
